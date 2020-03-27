@@ -48,7 +48,7 @@ if __name__ == "__main__":
     DS1.DivCell("bx", "by", "bz", "DivB")
     DS1.Write2HDF5("1classtest.h5")
 
-    DS2 = DataSet((39, 39, 39), (0.0, 0.0, 0.0), (Lx, Lx, Lx), "CAR")
+    DS2 = DataSet((20, 20, 20), (0.0, 0.0, 0.0), (Lx, Lx, Lx), "CAR")
     print("Start\n1")
     DS1.ToNewMesh(DS2, "bx", "Cells")
     print("2")
