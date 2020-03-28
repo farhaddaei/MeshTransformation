@@ -1,1 +1,3 @@
 /.idea/
+/example/*.h5
+/MeshTransformation.egg-info/

@@ -222,6 +222,22 @@ class DataSet:
         for k in self.vars.keys():
             if self.vars[k]['Location'] == "Cells":
                 GVarsCell.create_dataset(k, data=np.transpose(self.vars[k]["val"]))
+            elif self.vars[k]['Location'] == "EdgeX":  # save Edge-located vars on Cell centers
+                GVarsCell.create_dataset(k, data=np.transpose(
+                    0.25 * (self.vars[k]["val"][:, :-1, :-1] + self.vars[k]["val"][:, 1:, :-1] +
+                            self.vars[k]["val"][:, :-1, 1:] + self.vars[k]["val"][:, 1:, 1:])
+                ))
+            elif self.vars[k]['Location'] == "EdgeY":  # save Edge-located vars on Cell centers
+                GVarsCell.create_dataset(k, data=np.transpose(
+                    0.25 * (self.vars[k]["val"][:-1, :, :-1] + self.vars[k]["val"][1:, :, :-1] +
+                            self.vars[k]["val"][:-1, :, 1:] + self.vars[k]["val"][1:, :, 1:])
+                ))
+            elif self.vars[k]['Location'] == "EdgeZ":  # save Edge-located vars on Cell centers
+                GVarsCell.create_dataset(k, data=np.transpose(
+                    0.25 * (self.vars[k]["val"][:-1, :-1, :] + self.vars[k]["val"][1:, :-1, :] +
+                            self.vars[k]["val"][:-1, 1:, :] + self.vars[k]["val"][1:, 1:, :])
+                ))
+
             elif self.vars[k]['Location'] == "Nodes":
                 GVarsNode.create_dataset(k, data=np.transpose(self.vars[k]["val"]))
         GCell = fout.create_group("cell_coords")
@@ -289,21 +305,22 @@ class DataSet:
                 points1, values, (idata2.__dict__[NewLocation]['X'], idata2.__dict__[NewLocation]['Y'],
                                   idata2.__dict__[NewLocation]['Z']), method="linear")  # ''
 
-
-
-# def CurlEdgeToCell(idataset, Varx, Vary, Varz):
-#     """
-#
-#     :param idataset:
-#     :type idataset:
-#     :param Varx:
-#     :type Varx:
-#     :param Vary:
-#     :type Vary:
-#     :param Varz:
-#     :type Varz:
-#     :return:
-#     :rtype:
-#     """
-#
-#     return
+    def CurlEdgeToCell(self, VarNameX, VarNameY, VarNameZ, NewVarX, NewVarY, NewVarZ):
+        """
+        
+        :param VarNameX:
+        :type VarNameX:
+        :param VarNameY:
+        :type VarNameY:
+        :param VarNameZ:
+        :type VarNameZ:
+        :param NewVarX:
+        :type NewVarX:
+        :param NewVarY:
+        :type NewVarY:
+        :param NewVarZ:
+        :type NewVarZ:
+        :return:
+        :rtype:
+        """
+        return
