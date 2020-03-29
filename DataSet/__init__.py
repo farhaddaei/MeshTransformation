@@ -307,7 +307,6 @@ class DataSet:
 
     def CurlEdgeToCell(self, VarNameX, VarNameY, VarNameZ, NewVarX, NewVarY, NewVarZ):
         """
-        
         :param VarNameX:
         :type VarNameX:
         :param VarNameY:
@@ -323,4 +322,51 @@ class DataSet:
         :return:
         :rtype:
         """
-        return
+        if self.vars[VarNameX]["Location"] != "EdgeX":
+            print("{} must be located at EdgeX.".format(VarNameX))
+            return
+        elif self.vars[VarNameY]["Location"] != "EdgeY":
+            print("{} must be located at EdgeY.".format(VarNameY))
+            return
+        elif self.vars[VarNameZ]["Location"] != "EdgeZ":
+            print("{} must be located at EdgeZ.".format(VarNameZ))
+            return
+        # Curl A |x
+        self.vars[NewVarX] = dict()
+        self.vars[NewVarX]["Location"] = "Cells"
+        Temp1 = 0.5 * (self.vars[VarNameZ]["val"][:-1, :, :] +
+                       self.vars[VarNameZ]["val"][1:, :, :])
+        Temp2 = 0.5 * (self.vars[VarNameY]["val"][:-1, :, :] +
+                       self.vars[VarNameY]["val"][1:, :, :])
+        LeftTerm = (Temp1[:, 1:, :] - Temp1[:, :-1, :]) / \
+                   (self.FaceY['Y'][:, 1:, :] -
+                    self.FaceY['Y'][:, :-1, :])
+        self.vars[NewVarX]['val'] = \
+            LeftTerm - (Temp2[:, :, 1:] - Temp2[:, :, :-1]) / \
+            (self.FaceZ['Z'][:, :, 1:] - self.FaceZ['Z'][:, :, :-1])
+
+        # Curl A |y
+        self.vars[NewVarY] = dict()
+        self.vars[NewVarY]["Location"] = "Cells"
+        Temp1 = 0.5 * \
+            (self.vars[VarNameX]["val"][:, :-1, :] + self.vars[VarNameX]["val"][:, 1:, :])
+        Temp2 = 0.5 * \
+            (self.vars[VarNameZ]["val"][:, :-1, :] + self.vars[VarNameZ]["val"][:, 1:, :])
+        LeftTerm = (Temp1[:, :, 1:] - Temp1[:, :, :-1]) / \
+                   (self.FaceZ['Z'][:, :, 1:] - self.FaceZ['Z'][:, :, :-1])
+        self.vars[NewVarY]['val'] = \
+            LeftTerm - (Temp2[1:, :, :] - Temp2[:-1, :, :]) / \
+            (self.FaceX['X'][1:, :, :] - self.FaceX['X'][:-1, :, :])
+
+        # Curl A |z
+        self.vars[NewVarZ] = dict()
+        self.vars[NewVarZ]["Location"] = "Cells"
+        Temp1 = 0.5 * \
+            (self.vars[VarNameY]["val"][:, :, :-1] + self.vars[VarNameY]["val"][:, :, 1:])
+        Temp2 = 0.5 * \
+            (self.vars[VarNameX]["val"][:, :, :-1] + self.vars[VarNameX]["val"][:, :, 1:])
+        LeftTerm = (Temp1[1:, :, :] - Temp1[:-1, :, :]) / \
+            (self.FaceX['X'][1:, :, :] - self.FaceX['X'][:-1, :, :])
+        self.vars[NewVarZ]['val'] = LeftTerm - \
+            (Temp2[:, 1:, :] - Temp2[:, :-1, :]) / \
+            (self.FaceY['Y'][:, 1:, :] - self.FaceY['Y'][:, :-1, :])
