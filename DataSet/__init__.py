@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding=utf-8
 
 """
@@ -196,114 +196,35 @@ class DataSet:
             0.5 * (VarZ[inter, inter, inter] + VarZ[inter, inter, 2:]) * Areaz[inter, inter, 2:-1]
         return
 
-    def Write2HDF5(self, filename, databasename="Timestep_0"):
+    def DivFace(self, VarNameX, VarNameY, VarNameZ, NewVarName):
         """
-        inputs ::
-        ---------
-        :param filename:
-        :type filename:
-
-        :param databasename:
-        :type databasename:
+        :param VarNameX:
+        :type VarNameX:
+        :param VarNameY:
+        :type VarNameY:
+        :param VarNameZ:
+        :type VarNameZ:
+        :param NewVarName:
+        :type NewVarName:
+        :return:
+        :rtype:
         """
+        if     (self.vars[VarNameX]["Location"] != "FaceX" or
+                self.vars[VarNameY]["Location"] != "FaceY" or
+                self.vars[VarNameZ]["Location"] != "FaceZ"):
+            print("Input parameters must be repesented on Faces!!")
+            return
 
-        fout = h5.File(filename, 'w')
-        GTS = fout.create_group(databasename)
-        GTS.attrs["Time"] = 0.0
-
-        GVarsCell = GTS.create_group("VarsOnCell")
-        GVarsCell.attrs['coords'] = \
-            np.array([b'/cell_coords/X', b'/cell_coords/Y', b'/cell_coords/Z'], dtype='|S15')
-
-        GVarsNode = GTS.create_group("VarsOnNode")
-        GVarsNode.attrs['coords'] = \
-            np.array([b'/node_coords/X', b'/node_coords/Y', b'/node_coords/Z'], dtype='|S15')
-
-        for k in self.vars.keys():
-            if self.vars[k]['Location'] == "Cells":
-                GVarsCell.create_dataset(k, data=np.transpose(self.vars[k]["val"]))
-            elif self.vars[k]['Location'] == "EdgeX":  # save Edge-located vars on Cell centers
-                GVarsCell.create_dataset(k, data=np.transpose(
-                    0.25 * (self.vars[k]["val"][:, :-1, :-1] + self.vars[k]["val"][:, 1:, :-1] +
-                            self.vars[k]["val"][:, :-1, 1:] + self.vars[k]["val"][:, 1:, 1:])
-                ))
-            elif self.vars[k]['Location'] == "EdgeY":  # save Edge-located vars on Cell centers
-                GVarsCell.create_dataset(k, data=np.transpose(
-                    0.25 * (self.vars[k]["val"][:-1, :, :-1] + self.vars[k]["val"][1:, :, :-1] +
-                            self.vars[k]["val"][:-1, :, 1:] + self.vars[k]["val"][1:, :, 1:])
-                ))
-            elif self.vars[k]['Location'] == "EdgeZ":  # save Edge-located vars on Cell centers
-                GVarsCell.create_dataset(k, data=np.transpose(
-                    0.25 * (self.vars[k]["val"][:-1, :-1, :] + self.vars[k]["val"][1:, :-1, :] +
-                            self.vars[k]["val"][:-1, 1:, :] + self.vars[k]["val"][1:, 1:, :])
-                ))
-
-            elif self.vars[k]['Location'] == "Nodes":
-                GVarsNode.create_dataset(k, data=np.transpose(self.vars[k]["val"]))
-        GCell = fout.create_group("cell_coords")
-        GNode = fout.create_group("node_coords")
-        for i in self.Direction:
-            GCell.create_dataset(i, data=np.transpose(self.Cells[i]))
-            GNode.create_dataset(i, data=np.transpose(self.Nodes[i]))
-        fout.close()
-
-    def ToNewMesh(self, idata2, VarName, NewLocation):
-        """
-        ToNewMesh Method transfers a variable from one mesh to another one,
-        Two meshes may be in the same dataset (same mesh) on different mesh points
-        or on two different datasets with different system of coordinates or mesh spacing.
-
-        inputs ::
-        ---------
-
-        :param idata2: destenation dataset
-        :type idata2: dataset
-
-        :param NewLocation: location of transfered variable
-        :type NewLocation: str
-
-        :param VarName:
-        :type VarName:
-        """
-        if self.vars[VarName]["Location"] not in self.LocationOnGrid:
-            print("Dataset 1 ::", self.vars[VarName]["Location"], " is not supported.")
-            print("Possible locations for variables are :: ", *self.LocationOnGrid)
-
-        if NewLocation not in self.LocationOnGrid:
-            print("Dataset 2 ::", idata2.vars[VarName]["Location"], " is not supported.")
-            print("Possible locations for variables are :: ", *self.LocationOnGrid)
-
-        Loc1 = self.vars[VarName]["Location"]
-        shape1 = self.__dict__[Loc1]['X'].shape
-        Len1 = np.array(shape1).prod()
-        values = np.reshape(self.vars[VarName]['val'], (Len1,))
-        points1X = np.reshape(self.__dict__[Loc1]['X'], (Len1,))
-        points1Y = np.reshape(self.__dict__[Loc1]['Y'], (Len1,))
-        points1Z = np.reshape(self.__dict__[Loc1]['Z'], (Len1,))
-
-        if self.SystemOfCoords == "SPH":
-            RSinTheta1 = np.sin(points1Y) * points1X
-            points1 = np.array([RSinTheta1 * np.cos(points1Z),
-                                RSinTheta1 * np.sin(points1Z),
-                                points1X * np.cos(points1Y)])
-        else:
-            points1 = (points1X, points1Y, points1Z)
-
-        idata2.vars[VarName] = dict()
-        idata2.vars[VarName]["Location"] = NewLocation
-
-        if idata2.SystemOfCoords == "SPH":
-            shape2 = idata2.__dict__[NewLocation]['X'].shape
-            RSinTheta2 = idata2.__dict__[NewLocation]['X'] * np.sin(idata2[NewLocation]['Y'])
-            points2X = RSinTheta2 * np.cos(idata2.__dict__[NewLocation]['Z'])
-            points2Y = RSinTheta2 * np.sin(idata2.__dict__[NewLocation]['Z'])
-            points2Z = idata2.__dict__[NewLocation]['X'] * np.cos(idata2.__dict__[NewLocation]['Y'])
-            idata2.vars[VarName]["val"] = \
-                griddata(points1, values, (points2X, points2Y, points2Z), method="linear")
-        else:
-            idata2.vars[VarName]["val"] = griddata(
-                points1, values, (idata2.__dict__[NewLocation]['X'], idata2.__dict__[NewLocation]['Y'],
-                                  idata2.__dict__[NewLocation]['Z']), method="linear")  # ''
+        self.vars[NewVarName] = dict()
+        self.vars[NewVarName]["Location"] = "Cells"
+        self.vars[NewVarName]["val"] = \
+            self.vars[VarNameX]["val"][1:, :, :] * self.Ax["Area"][1:, :, :] - \
+            self.vars[VarNameX]["val"][:-1, :, :] * self.Ax["Area"][:-1, :, :] + \
+            self.vars[VarNameY]["val"][:, 1:, :] * self.Ay["Area"][:, 1:, :] - \
+            self.vars[VarNameY]["val"][:, :-1, :] * self.Ay["Area"][:, :-1, :] + \
+            self.vars[VarNameZ]["val"][:, :, 1:] * self.Az["Area"][:, :, 1:] - \
+            self.vars[VarNameZ]["val"][:, :, :-1] * self.Az["Area"][:, :, :-1]
+        return
 
     def CurlEdgeToCell(self, VarNameX, VarNameY, VarNameZ, NewVarX, NewVarY, NewVarZ):
         """
@@ -370,3 +291,184 @@ class DataSet:
         self.vars[NewVarZ]['val'] = LeftTerm - \
             (Temp2[:, 1:, :] - Temp2[:, :-1, :]) / \
             (self.FaceY['Y'][:, 1:, :] - self.FaceY['Y'][:, :-1, :])
+
+    def CurlEdgeToFace(self, VarNameX, VarNameY, VarNameZ, NewVarX, NewVarY, NewVarZ):
+        """
+        :param VarNameX:
+        :type VarNameX:
+        :param VarNameY:
+        :type VarNameY:
+        :param VarNameZ:
+        :type VarNameZ:
+        :param NewVarX:
+        :type NewVarX:
+        :param NewVarY:
+        :type NewVarY:
+        :param NewVarZ:
+        :type NewVarZ:
+        :return:
+        :rtype:
+        """
+        if self.vars[VarNameX]["Location"] != "EdgeX":
+            print("{} must be located at EdgeX.".format(VarNameX))
+            return
+        elif self.vars[VarNameY]["Location"] != "EdgeY":
+            print("{} must be located at EdgeY.".format(VarNameY))
+            return
+        elif self.vars[VarNameZ]["Location"] != "EdgeZ":
+            print("{} must be located at EdgeZ.".format(VarNameZ))
+            return
+        # Curl A | X-Component
+        self.vars[NewVarX] = dict()
+        self.vars[NewVarX]["Location"] = "FaceX"
+        self.vars[NewVarX]["val"] = \
+            (self.vars[VarNameZ]["val"][:, 1:, :] - self.vars[VarNameZ]["val"][:, :-1, :]) / \
+            (self.EdgeZ["Y"][:, 1:, :] - self.EdgeZ["Y"][:, :-1, :]) - \
+            (self.vars[VarNameY]["val"][:, :, 1:] - self.vars[VarNameY]["val"][:, :, :-1]) / \
+            (self.EdgeY["Z"][:, :, 1:] - self.EdgeY["Z"][:, :, :-1])
+
+        # Curl A | Y-Component
+        self.vars[NewVarY] = dict()
+        self.vars[NewVarY]["Location"] = "FaceY"
+        self.vars[NewVarY]["val"] = \
+            (self.vars[VarNameX]["val"][:, :, 1:] - self.vars[VarNameX]["val"][:, :, :-1]) / \
+            (self.EdgeX["Z"][:, :, 1:] - self.EdgeX["Z"][:, :, :-1]) - \
+            (self.vars[VarNameZ]["val"][1:, :, :] - self.vars[VarNameZ]["val"][:-1, :, :]) / \
+            (self.EdgeZ["X"][1:, :, :] - self.EdgeZ["X"][:-1, :, :])
+
+        # Curl A | Z-Component
+        self.vars[NewVarZ] = dict()
+        self.vars[NewVarZ]["Location"] = "FaceZ"
+        self.vars[NewVarZ]["val"] = \
+            (self.vars[VarNameY]["val"][1:, :, :] - self.vars[VarNameY]["val"][:-1, :, :]) / \
+            (self.EdgeY["X"][1:, :, :] - self.EdgeY["X"][:-1, :, :]) - \
+            (self.vars[VarNameX]["val"][:, 1:, :] - self.vars[VarNameX]["val"][:, :-1, :]) / \
+            (self.EdgeX["Y"][:, 1:, :] - self.EdgeX["Y"][:, :-1, :])
+
+    def Write2HDF5(self, filename, databasename="Timestep_0"):
+        """
+        inputs ::
+        ---------
+        :param filename:
+        :type filename:
+
+        :param databasename:
+        :type databasename:
+        """
+
+        fout = h5.File(filename, 'w')
+        GTS = fout.create_group(databasename)
+        GTS.attrs["Time"] = 0.0
+
+        GVarsCell = GTS.create_group("VarsOnCell")
+        GVarsCell.attrs['coords'] = \
+            np.array([b'/cell_coords/X', b'/cell_coords/Y', b'/cell_coords/Z'], dtype='|S15')
+
+        GVarsNode = GTS.create_group("VarsOnNode")
+        GVarsNode.attrs['coords'] = \
+            np.array([b'/node_coords/X', b'/node_coords/Y', b'/node_coords/Z'], dtype='|S15')
+
+        for k in self.vars.keys():
+            if self.vars[k]['Location'] == "Cells":
+                GVarsCell.create_dataset(k, data=np.transpose(self.vars[k]["val"]))
+##
+            elif self.vars[k]['Location'] == "EdgeX":  # save Edge-located vars on Cell centers
+                GVarsCell.create_dataset(k, data=np.transpose(
+                    0.25 * (self.vars[k]["val"][:, :-1, :-1] + self.vars[k]["val"][:, 1:, :-1] +
+                            self.vars[k]["val"][:, :-1, 1:] + self.vars[k]["val"][:, 1:, 1:])
+                ))
+##
+            elif self.vars[k]['Location'] == "EdgeY":  # save Edge-located vars on Cell centers
+                GVarsCell.create_dataset(k, data=np.transpose(
+                    0.25 * (self.vars[k]["val"][:-1, :, :-1] + self.vars[k]["val"][1:, :, :-1] +
+                            self.vars[k]["val"][:-1, :, 1:] + self.vars[k]["val"][1:, :, 1:])
+                ))
+##
+            elif self.vars[k]['Location'] == "EdgeZ":  # save Edge-located vars on Cell centers
+                GVarsCell.create_dataset(k, data=np.transpose(
+                    0.25 * (self.vars[k]["val"][:-1, :-1, :] + self.vars[k]["val"][1:, :-1, :] +
+                            self.vars[k]["val"][:-1, 1:, :] + self.vars[k]["val"][1:, 1:, :])
+                ))
+##
+            elif self.vars[k]['Location'] == "FaceX":  # save Edge-located vars on Cell centers
+                GVarsCell.create_dataset(k, data=np.transpose(
+                    0.5 * (self.vars[k]["val"][:-1, :, :] + self.vars[k]["val"][:1, :, :])
+                ))
+##
+            elif self.vars[k]['Location'] == "FaceY":  # save Edge-located vars on Cell centers
+                GVarsCell.create_dataset(k, data=np.transpose(
+                    0.5 * (self.vars[k]["val"][:, :-1, :] + self.vars[k]["val"][:, 1:, :])
+                ))
+##
+            elif self.vars[k]['Location'] == "FaceZ":  # save Edge-located vars on Cell centers
+                GVarsCell.create_dataset(k, data=np.transpose(
+                    0.5 * (self.vars[k]["val"][:, :, :-1] + self.vars[k]["val"][:, :, 1:])
+                ))
+##
+            elif self.vars[k]['Location'] == "Nodes":
+                GVarsNode.create_dataset(k, data=np.transpose(self.vars[k]["val"]))
+
+        GCell = fout.create_group("cell_coords")
+        GNode = fout.create_group("node_coords")
+        for i in self.Direction:
+            GCell.create_dataset(i, data=np.transpose(self.Cells[i]))
+            GNode.create_dataset(i, data=np.transpose(self.Nodes[i]))
+        fout.close()
+
+    def ToNewMesh(self, idata2, VarName, NewLocation):
+        """
+        ToNewMesh Method transfers a variable from one mesh to another one,
+        Two meshes may be in the same dataset (same mesh) on different mesh points
+        or on two different datasets with different system of coordinates or mesh spacing.
+
+        inputs ::
+        ---------
+
+        :param idata2: destenation dataset
+        :type idata2: dataset
+
+        :param NewLocation: location of transfered variable
+        :type NewLocation: str
+
+        :param VarName:
+        :type VarName:
+        """
+        if self.vars[VarName]["Location"] not in self.LocationOnGrid:
+            print("Dataset 1 ::", self.vars[VarName]["Location"], " is not supported.")
+            print("Possible locations for variables are :: ", *self.LocationOnGrid)
+
+        if NewLocation not in self.LocationOnGrid:
+            print("Dataset 2 ::", idata2.vars[VarName]["Location"], " is not supported.")
+            print("Possible locations for variables are :: ", *self.LocationOnGrid)
+
+        Loc1 = self.vars[VarName]["Location"]
+        shape1 = self.__dict__[Loc1]['X'].shape
+        Len1 = np.array(shape1).prod()
+        values = np.reshape(self.vars[VarName]['val'], (Len1,))
+        points1X = np.reshape(self.__dict__[Loc1]['X'], (Len1,))
+        points1Y = np.reshape(self.__dict__[Loc1]['Y'], (Len1,))
+        points1Z = np.reshape(self.__dict__[Loc1]['Z'], (Len1,))
+
+        if self.SystemOfCoords == "SPH":
+            RSinTheta1 = np.sin(points1Y) * points1X
+            points1 = np.array([RSinTheta1 * np.cos(points1Z),
+                                RSinTheta1 * np.sin(points1Z),
+                                points1X * np.cos(points1Y)])
+        else:
+            points1 = (points1X, points1Y, points1Z)
+
+        idata2.vars[VarName] = dict()
+        idata2.vars[VarName]["Location"] = NewLocation
+
+        if idata2.SystemOfCoords == "SPH":
+            shape2 = idata2.__dict__[NewLocation]['X'].shape
+            RSinTheta2 = idata2.__dict__[NewLocation]['X'] * np.sin(idata2[NewLocation]['Y'])
+            points2X = RSinTheta2 * np.cos(idata2.__dict__[NewLocation]['Z'])
+            points2Y = RSinTheta2 * np.sin(idata2.__dict__[NewLocation]['Z'])
+            points2Z = idata2.__dict__[NewLocation]['X'] * np.cos(idata2.__dict__[NewLocation]['Y'])
+            idata2.vars[VarName]["val"] = \
+                griddata(points1, values, (points2X, points2Y, points2Z), method="linear")
+        else:
+            idata2.vars[VarName]["val"] = griddata(
+                points1, values, (idata2.__dict__[NewLocation]['X'], idata2.__dict__[NewLocation]['Y'],
+                                  idata2.__dict__[NewLocation]['Z']), method="linear")  #

@@ -68,25 +68,64 @@ def Azu(Coord):
 
 if __name__ == "__main__":
     DS1 = DataSet((40, 40, 40), (0.0, 0.0, 0.0), (Lx, Lx, Lx), "CAR")
+
     DS1.Scalar("bx", "Cells", BFieldX)  # BxUni
     DS1.Scalar("by", "Cells", BFieldY)  # ByUni
     DS1.Scalar("bz", "Cells", BFieldZ)  # BzUni
-    DS1.Scalar("Ax", "EdgeX", Axu)
-    DS1.Scalar("Ay", "EdgeY", Ayu)
-    DS1.Scalar("Az", "EdgeZ", Azu)
-    DS1.CurlEdgeToCell("Ax", "Ay", "Az", "BXa", "BYa", "BZa")
-    DS1.DivCell("bx", "by", "bz", "DivB")
-    DS1.DivCell("BXa", "BYa", "BZa", "DivBa")
-    DS1.Write2HDF5("2.h5")
+    DS1.DivCell("bx", "by", "bz", "DivB")  # Dircet calculation of B
 
+    DS1.Scalar("bxfd", "FaceX", BFieldX)  # BxUni
+    DS1.Scalar("byfd", "FaceY", BFieldY)  # ByUni
+    DS1.Scalar("bzfd", "FaceZ", BFieldZ)  # BzUni
+    DS1.DivFace("bxfd", "byfd", "bzfd", "DivBfd")  # Dircet calculation of B
+
+    DS1.Scalar("Ax", "EdgeX", Ax)
+    DS1.Scalar("Ay", "EdgeY", Ay)
+    DS1.Scalar("Az", "EdgeZ", Az)
+
+    DS1.CurlEdgeToCell("Ax", "Ay", "Az", "BXa", "BYa", "BZa")
+    DS1.DivCell("BXa", "BYa", "BZa", "DivBa")  # using A on Edges and B on Cells
+
+    DS1.CurlEdgeToFace("Ax", "Ay", "Az", "BXf", "BYf", "BZf")
+    DS1.DivFace("BXf", "BYf", "BZf", "DivBf")  # using A on Edges and B on Cells
+
+    DS1.Write2HDF5("DataSet1.h5")
+
+# Try transfering to new Sys. of Coords.
     DS2 = DataSet((30, 30, 25), (0.0, 0.0, 0.0), (Lx, Lx, Lx), "CAR")
-    print("Start\n1")
+
+# Direct transformation of B located @ Cell center
+    print("B ::\n 1")
+    DS1.ToNewMesh(DS2, "bx", "Cells")
+    print(" 2")
+    DS1.ToNewMesh(DS2, "by", "Cells")
+    print(" 3")
+    DS1.ToNewMesh(DS2, "bz", "Cells")
+    print("B :: Done!")
+    DS2.DivCell("bx", "by", "bz", "DivB")
+
+# Direct transformation of B located @ Cell Faces
+    print("B @ face ::\n 1")
+    DS1.ToNewMesh(DS2, "bxfd", "FaceX")
+    print(" 2")
+    DS1.ToNewMesh(DS2, "byfd", "FaceY")
+    print(" 3")
+    DS1.ToNewMesh(DS2, "bzfd", "FaceZ")
+    print("B @ face:: Done!")
+    DS2.DivFace("bxfd", "byfd", "bzfd", "DivBfd")
+
+    print("A ::\n 1")
     DS1.ToNewMesh(DS2, "Ax", "EdgeX")
-    print("2")
+    print(" 2")
     DS1.ToNewMesh(DS2, "Ay", "EdgeY")
-    print("3")
+    print(" 3")
     DS1.ToNewMesh(DS2, "Az", "EdgeZ")
-    print("Done!")
+    print("A :: Done!")
+
     DS2.CurlEdgeToCell("Ax", "Ay", "Az", "Bxa", "Bya", "Bza")
-    DS2.DivCell("Bxa", "Bya", "Bza", "DivB")
-    DS2.Write2HDF5("3.h5")
+    DS2.DivCell("Bxa", "Bya", "Bza", "DivBa")
+
+    DS2.CurlEdgeToFace("Ax", "Ay", "Az", "BXf", "BYf", "BZf")
+    DS2.DivFace("BXf", "BYf", "BZf", "DivBf")  # using A on Edges and B on Cells
+
+    DS2.Write2HDF5("DataSet2.h5")
