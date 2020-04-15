@@ -1,3 +1,7 @@
 /.idea/
 /example/*.h5
 /MeshTransformation.egg-info/
+/example/.ipynb_checkpoints/
+DataSet/__pycache__/
+example/Computing the relative helicity.ipynb
+example/Test.ipynb

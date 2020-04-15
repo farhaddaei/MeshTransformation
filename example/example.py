@@ -42,15 +42,20 @@ def BzUni(Coord):
 
 # Magnetic Vector Potential components
 def Ax(Coord):
-    return -0.5 * B0 * Coord['Y']
+    return np.zeros_like(Coord['X'])
 
 
 def Ay(Coord):
-    return 0.5 * B0 * Coord['X']
+    return np.zeros_like(Coord['Y'])
 
 
 def Az(Coord):
-    return np.zeros_like(Coord['Z'])
+    L = 100.0
+    x0, y0 = -2.0, 3.0
+    X = Coord['X'] - x0
+    Y = Coord['Y'] - y0
+    Coeff = 10.0
+    return Coeff * (np.log(2.0 * L) - np.log(np.sqrt(X*X + Y*Y)))
 
 
 # uniform \vec{A}
@@ -68,51 +73,38 @@ def Azu(Coord):
 
 if __name__ == "__main__":
     DS1 = DataSet((40, 40, 40), (0.0, 0.0, 0.0), (Lx, Lx, Lx), "CAR")
-
-    DS1.Scalar("bx", "Cells", BFieldX)  # BxUni
-    DS1.Scalar("by", "Cells", BFieldY)  # ByUni
-    DS1.Scalar("bz", "Cells", BFieldZ)  # BzUni
-    DS1.DivCell("bx", "by", "bz", "DivB")  # Dircet calculation of B
-
-    DS1.Scalar("bxfd", "FaceX", BFieldX)  # BxUni
-    DS1.Scalar("byfd", "FaceY", BFieldY)  # ByUni
-    DS1.Scalar("bzfd", "FaceZ", BFieldZ)  # BzUni
-    DS1.DivFace("bxfd", "byfd", "bzfd", "DivBfd")  # Dircet calculation of B
-
+#
+#     DS1.Scalar("bx", "Cells", BFieldX)  # BxUni
+#     DS1.Scalar("by", "Cells", BFieldY)  # ByUni
+#     DS1.Scalar("bz", "Cells", BFieldZ)  # BzUni
+#     DS1.DivCell("bx", "by", "bz", "DivB")  # Dircet calculation of B
+#
+    # DS1.Scalar("bxfd", "FaceX", BFieldX)  # BxUni
+    # DS1.Scalar("byfd", "FaceY", BFieldY)  # ByUni
+    # DS1.Scalar("bzfd", "FaceZ", BFieldZ)  # BzUni
+    # DS1.DivFace("bxfd", "byfd", "bzfd", "DivBfd")  # Dircet calculation of B
+    # DS1.AvgFaceToCell("bxfd", "byfd", "bzfd", "BxCell", "ByCell", "BzCell")  # Dircet calculation of B
+    # DS1.DivCellFD("BxCell", "ByCell", "BzCell", "DivCellB")
+#
     DS1.Scalar("Ax", "EdgeX", Ax)
     DS1.Scalar("Ay", "EdgeY", Ay)
     DS1.Scalar("Az", "EdgeZ", Az)
-
-    DS1.CurlEdgeToCell("Ax", "Ay", "Az", "BXa", "BYa", "BZa")
-    DS1.DivCell("BXa", "BYa", "BZa", "DivBa")  # using A on Edges and B on Cells
-
+#
+    # DS1.CurlEdgeToCell("Ax", "Ay", "Az", "BXa", "BYa", "BZa")
+    # DS1.DivCell("BXa", "BYa", "BZa", "DivBa")  # using A on Edges and B on Cells
+#
     DS1.CurlEdgeToFace("Ax", "Ay", "Az", "BXf", "BYf", "BZf")
     DS1.DivFace("BXf", "BYf", "BZf", "DivBf")  # using A on Edges and B on Cells
 
-    DS1.Write2HDF5("DataSet1.h5")
+    DS1.CurlFaceToEdge("BXf", "BYf", "BZf", "JXe", "JYe", "JZe")
 
-# Try transfering to new Sys. of Coords.
-    DS2 = DataSet((30, 30, 25), (0.0, 0.0, 0.0), (Lx, Lx, Lx), "CAR")
+    DS1.AvgFaceToCell("BXf", "BYf", "BZf", "BXc", "BYc", "BZc")
+    DS1.AvgEdgeToCell("JXe", "JYe", "JZe", "JXc", "JYc", "JZc")
+    DS1.Cross("JXc", "JYc", "JZc", "BXc", "BYc", "BZc", "LFXc", "LFYc", "LFZc")
+    DS1.Write2HDF5("DataSet1111.h5")
 
-# Direct transformation of B located @ Cell center
-    print("B ::\n 1")
-    DS1.ToNewMesh(DS2, "bx", "Cells")
-    print(" 2")
-    DS1.ToNewMesh(DS2, "by", "Cells")
-    print(" 3")
-    DS1.ToNewMesh(DS2, "bz", "Cells")
-    print("B :: Done!")
-    DS2.DivCell("bx", "by", "bz", "DivB")
-
-# Direct transformation of B located @ Cell Faces
-    print("B @ face ::\n 1")
-    DS1.ToNewMesh(DS2, "bxfd", "FaceX")
-    print(" 2")
-    DS1.ToNewMesh(DS2, "byfd", "FaceY")
-    print(" 3")
-    DS1.ToNewMesh(DS2, "bzfd", "FaceZ")
-    print("B @ face:: Done!")
-    DS2.DivFace("bxfd", "byfd", "bzfd", "DivBfd")
+# # Try transfering to new Sys. of Coords.
+    DS2 = DataSet((38, 38, 40), (0.0, 0.0, 0.0), (Lx, Lx, Lx), "CAR")
 
     print("A ::\n 1")
     DS1.ToNewMesh(DS2, "Ax", "EdgeX")
@@ -122,10 +114,10 @@ if __name__ == "__main__":
     DS1.ToNewMesh(DS2, "Az", "EdgeZ")
     print("A :: Done!")
 
-    DS2.CurlEdgeToCell("Ax", "Ay", "Az", "Bxa", "Bya", "Bza")
-    DS2.DivCell("Bxa", "Bya", "Bza", "DivBa")
-
     DS2.CurlEdgeToFace("Ax", "Ay", "Az", "BXf", "BYf", "BZf")
     DS2.DivFace("BXf", "BYf", "BZf", "DivBf")  # using A on Edges and B on Cells
-
-    DS2.Write2HDF5("DataSet2.h5")
+    DS2.CurlFaceToEdge("BXf", "BYf", "BZf", "JXe", "JYe", "JZe")
+    DS2.AvgFaceToCell("BXf", "BYf", "BZf", "BXc", "BYc", "BZc")
+    DS2.AvgEdgeToCell("JXe", "JYe", "JZe", "JXc", "JYc", "JZc")
+    DS2.Cross("JXc", "JYc", "JZc", "BXc", "BYc", "BZc", "LFXc", "LFYc", "LFZc")
+    DS2.Write2HDF5("DataSet2222.h5")

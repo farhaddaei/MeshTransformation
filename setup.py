@@ -3,7 +3,7 @@ from distutils.core import setup
 required_packages = ['numpy', 'scipy', 'h5py']
 setup(
     name='MeshTransformation',
-    version='0.9.0b3',
+    version='0.9.0b4',
     description='''Farhad said :: blah blah ''',
     author='Farhad Daei',
     author_email='farhad.daei@helsinki.fi',
