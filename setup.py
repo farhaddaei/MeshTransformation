@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-required_packages = ['numpy', 'scipy', 'h5py', 'memory_profiler']
+required_packages = ['numpy', 'scipy', 'h5py', 'memory_profiler', 'pandas']
 setup(
     name='MeshTransformation',
     version='0.9.0b5',

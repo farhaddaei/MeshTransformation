@@ -9,8 +9,7 @@
   -------
   1. Create a conda envirment with Python >= 3.6
   2. Activate the new env
-  3. Navigate to diectory containning setup.py
-  4. run following command in terminal
+git  4. run following command in terminal
   
      pip install .
   
