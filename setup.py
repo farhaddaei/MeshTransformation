@@ -1,9 +1,9 @@
 from distutils.core import setup
 
-required_packages = ['numpy', 'scipy', 'h5py']
+required_packages = ['numpy', 'scipy', 'h5py', 'memory_profiler']
 setup(
     name='MeshTransformation',
-    version='0.9.0b4',
+    version='0.9.0b5',
     description='''Farhad said :: blah blah ''',
     author='Farhad Daei',
     author_email='farhad.daei@helsinki.fi',

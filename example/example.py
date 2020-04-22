@@ -72,6 +72,8 @@ def Azu(Coord):
 
 
 if __name__ == "__main__":
+    DSfiles = DataSet(SystemOfCoords="CAR", BaseAddress="/home/sigma/PycharmProjects/extract/", NBlocks=20, UseBlock=0)
+if False:
     DS1 = DataSet((40, 40, 40), (0.0, 0.0, 0.0), (Lx, Lx, Lx), "CAR")
 #
 #     DS1.Scalar("bx", "Cells", BFieldX)  # BxUni
