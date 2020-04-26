@@ -89,6 +89,10 @@ class DataSet:
             if UseBlock is None:
                 UseBlock = 0
             self.NBlocks = NBlocks
+            self.BaseAddress = BaseAddress
+            self.UseBlock = UseBlock
+            self.Pattern = Pattern
+
             self.sorting = np.empty((self.NBlocks, 2, 3, 2), dtype=np.int)
             self.sorting[:] = -10000
             self.geo = self.FindGeometry(NBlocks, BaseAddress, Pattern, UseBlock)
@@ -851,7 +855,6 @@ class DataSet:
                 if len(data[t].shape) == 3:
                     Geo["vars"][t] = dict()
                     tLocation = data[t].shape
-                    print(t, tLocation)
                     if tLocation == Nodes:
                         Geo["vars"][t]["Location"] = "Nodes"
                     elif tLocation == Cells:
@@ -950,5 +953,28 @@ class DataSet:
         return Geo
 
     def LoadData(self):
+        for var in self.geo["vars"]:
+            self.vars[var] = dict()
+            if geo["vars"][var]["Locattion"] == "FaceX":
+                self.vars[var]["Location"] = "FaceX"
+                self.vars[var]["val"] = np.empty_like(self.FaceX["X"])
+
+            if geo["vars"][var]["Locattion"] == "FaceY":
+                self.vars[var]["Location"] = "FaceY"
+                self.vars[var]["val"] = np.empty_like(self.FaceY["Y"])
+
+            elif geo["vars"][var]["Locattion"] == "FaceZ":
+                self.vars[var]["Location"] = "FaceZ"
+                self.vars[var]["val"] = np.empty_like(self.FaceZ["Z"])
+            else:
+                sys.exit("The location of variable is not Implimented yet")
+
+        for ii in range(self.NBlocks):
+            data = np.load(self.BaseAddress+self.geo["Files"][ii], allow_pickle=True, encoding="bytes")
+            for var in self.geo["vars"]:
+                XOffset = 0
+                YOffset = 0
+                ZOffset = 0
+                if self.geo["BlockLocation"][ii][]
 
         return
