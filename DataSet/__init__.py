@@ -25,7 +25,7 @@ class DataSet:
     DataSet
 
     """
-    @profile
+#     @profile
     def __init__(self, SystemOfCoords, NCell=None, startval=None, endval=None,
                  BaseAddress=None, Pattern=None, NBlocks=None, UseBlock=None):
         """
@@ -71,9 +71,9 @@ class DataSet:
         self.NAxes = 3
         if not (SystemOfCoords in ["CAR", "SPH"]):
             sys.exit("System of coordinates must be one of the 'CAR' or 'SPH'")
+        self.SystemOfCoords = SystemOfCoords
         if BaseAddress is None and Pattern is None and NBlocks is None:
             self.LoadFromFile = False
-            self.SystemOfCoords = SystemOfCoords
             self.NCell = NCell
             self.startval = startval
             self.endval = endval
@@ -163,8 +163,8 @@ class DataSet:
 
         for i in range(self.Az["Area"].shape[2]):
             self.Az["Area"][:, :, i] = axy
-        if self.LoadFromFile:
-            self.LoadData()
+#        if self.LoadFromFile:
+#            self.LoadData()
         return
 
     def Scalar(self, VarName, Location, function):
@@ -745,7 +745,7 @@ class DataSet:
             idata2.vars[VarName]["val"] = griddata(
                 points1, values, (idata2.__dict__[NewLocation]['X'], idata2.__dict__[NewLocation]['Y'],
                                   idata2.__dict__[NewLocation]['Z']), method="linear")  #
-    @profile
+#     @profile
     def FindGeometry(self, BlockSize, BaseAddress, Pattern, StartingBlock):
         """
         FindGeometry finds out the mesh structure, the data
@@ -781,62 +781,66 @@ class DataSet:
         xs, ys, zs, xvec, yvec, zvec, xyz = [], [], [], [], [], [], []
         # extract important info from files in a block
         data = []
-        for ii in range(StartingBlock * BlockSize, StartingBlock * BlockSize + BlockSize):
+        f = BaseAddress + FilesNames[0]
+        temp = np.load(f)
+        xs, ys, zs = temp["x"], temp["y"], temp["z"]
+        del temp
+        for ii in range(1, BlockSize):
             f = BaseAddress + FilesNames[ii]
-            del data
             data = np.load(f, allow_pickle=True, encoding="bytes")
-            xs.append(data["x"][0])
-            ys.append(data["y"][0])
-            zs.append(data["z"][0])
+            xs = np.concatenate((xs, data["x"]))
+            ys = np.concatenate((ys, data["y"]))
+            zs = np.concatenate((zs, data["z"]))
             xyz.append((data["x"].size, data["y"].size, data["z"].size))
             xvec.append(data["x"])
             yvec.append(data["y"])
             zvec.append(data["z"])
-        xs = np.unique(xs)  # find unique velues and sort them
-        ys = np.unique(ys)
-        zs = np.unique(zs)
-        nx = xs.size
-        ny = ys.size
-        nz = zs.size
-        ids = np.empty((nx, ny, nz), dtype=np.int)
-        BlockLocation = np.empty((BlockSize, 3), dtype=np.int)
-        for p in range(BlockSize):
-            ii = np.where(xs == xvec[p][0])[0]
-            jj = np.where(ys == yvec[p][0])[0]
-            kk = np.where(zs == zvec[p][0])[0]
-            ids[ii, jj, kk] = p
-            BlockLocation[p, 0] = ii
-            BlockLocation[p, 1] = jj
-            BlockLocation[p, 2] = kk
-        Geo["ids"] = ids
-        Geo["BlockLocation"] = BlockLocation
 
-        Geo["xvec"] = xvec
-        Geo["yvec"] = yvec
+        Geo["x"] = np.unique(xs)  # find unique velues and sort them
+        Geo["y"] = np.unique(ys)
+        Geo["z"] = np.unique(zs)
+#         nx = xs.size
+#         ny = ys.size
+#         nz = zs.size
+#         ids = np.empty((nx, ny, nz), dtype=np.int)
+#         BlockLocation = np.empty((BlockSize, 3), dtype=np.int)
+#         for p in range(BlockSize):
+#             ii = np.where(xs == xvec[p][0])[0]
+#             jj = np.where(ys == yvec[p][0])[0]
+#             kk = np.where(zs == zvec[p][0])[0]
+#             ids[ii, jj, kk] = p
+#             BlockLocation[p, 0] = ii
+#             BlockLocation[p, 1] = jj
+#             BlockLocation[p, 2] = kk
+#         Geo["ids"] = ids
+#         Geo["BlockLocation"] = BlockLocation
 
-        Geo["zvec"] = zvec
-        Geo["xyz"] = xyz
-        Geo["nxyz"] = (nx, ny, nz)
+#         Geo["xvec"] = xvec
+#         Geo["yvec"] = yvec
 
-        Geo["nghost"] = data["num_ghost_cells"]
-        nxghost = Geo["nghost"][0]
-        nyghost = Geo["nghost"][1]
-        nzghost = Geo["nghost"][2]
-        Geo["x"] = xvec[ids[0, 0, 0]][:nx]  # cut Ghost zones
-        Geo["y"] = yvec[ids[0, 0, 0]][:ny]  # cut Ghost zones
-        Geo["z"] = zvec[ids[0, 0, 0]][:nz]  # cut Ghost zones
-        for ix in ids[:, 0, 0]:
-            Geo["x"] = np.concatenate((Geo["x"], xvec[ix][nxghost:-nxghost]))
+#         Geo["zvec"] = zvec
+#         Geo["xyz"] = xyz
+#         Geo["nxyz"] = (nx, ny, nz)
 
-        for iy in ids[0, :, 0]:
-            Geo["y"] = np.concatenate((Geo["y"], yvec[iy][nyghost:-nyghost]))
+#         Geo["nghost"] = data["num_ghost_cells"]
+#         nxghost = Geo["nghost"][0]
+#         nyghost = Geo["nghost"][1]
+#         nzghost = Geo["nghost"][2]
+#         Geo["x"] = xvec[ids[0, 0, 0]][:nx]  # cut Ghost zones
+#         Geo["y"] = yvec[ids[0, 0, 0]][:ny]  # cut Ghost zones
+#         Geo["z"] = zvec[ids[0, 0, 0]][:nz]  # cut Ghost zones
+#         for ix in ids[:, 0, 0]:
+#             Geo["x"] = np.concatenate((Geo["x"], xvec[ix][nxghost:-nxghost]))
 
-        for iz in ids[0, 0, :]:
-            Geo["z"] = np.concatenate((Geo["z"], zvec[iz][nzghost:-nzghost]))
+#         for iy in ids[0, :, 0]:
+#             Geo["y"] = np.concatenate((Geo["y"], yvec[iy][nyghost:-nyghost]))
 
-        Geo["x"] = np.concatenate((Geo["x"], xvec[ids[-1, 0, 0]][-nxghost:]))
-        Geo["y"] = np.concatenate((Geo["y"], yvec[ids[0, -1, 0]][-nyghost:]))
-        Geo["z"] = np.concatenate((Geo["z"], zvec[ids[0, 0, -1]][-nzghost:]))
+#         for iz in ids[0, 0, :]:
+#             Geo["z"] = np.concatenate((Geo["z"], zvec[iz][nzghost:-nzghost]))
+
+#         Geo["x"] = np.concatenate((Geo["x"], xvec[ids[-1, 0, 0]][-nxghost:]))
+#         Geo["y"] = np.concatenate((Geo["y"], yvec[ids[0, -1, 0]][-nyghost:]))
+#         Geo["z"] = np.concatenate((Geo["z"], zvec[ids[0, 0, -1]][-nzghost:]))
         # to check the location of var (Face, Cell, Edge, Node)
         Nodes = (data["x"].size, data["y"].size, data["z"].size)
         Cells = (data["x"].size - 1, data["y"].size - 1, data["z"].size - 1)
@@ -873,108 +877,111 @@ class DataSet:
                         Geo["vars"][t]["Location"] = "EdgeZ"
 
         Geo["Files"] = FilesNames[(StartingBlock * BlockSize):(StartingBlock * BlockSize + BlockSize)]
-        #** Determine from which and up to what indeces the input arrays must be loaded
-        # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
-        # starting Index for read in X, Y, and Z directions at physical boundaries
-        self.sorting[Geo["ids"][0, :, :], 0, 0, 0] = 0
-        self.sorting[Geo["ids"][:, 0, :], 0, 1, 0] = 0
-        self.sorting[Geo["ids"][:, :, 0], 0, 2, 0] = 0
-        # starting Index for read in X, Y, and Z directions inside physical domain
-        self.sorting[Geo["ids"][1:, :, :], 0, 0, 0] = Geo["nghost"][0]
-        self.sorting[Geo["ids"][:, 1:, :], 0, 1, 0] = Geo["nghost"][1]
-        self.sorting[Geo["ids"][:, :, 1:], 0, 2, 0] = Geo["nghost"][2]
-
-        # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
-        # ending Index for read in X direction inside physical domain
-        for ii in np.nditer(Geo["ids"][:-1, :, :]):
-            self.sorting[ii, 0, 0, 1] = Geo["xyz"][ii][0] - Geo["nghost"][0]
-        # ending Index for read in X direction at physical boundary
-        for ii in np.nditer(Geo["ids"][-1, :, :]):
-            self.sorting[ii, 0, 0, 1] = Geo["xyz"][ii][0]
-        # ending Index for read in Y direction inside physical domain
-        for ii in np.nditer(Geo["ids"][:, :-1, :]):
-            self.sorting[ii, 0, 1, 1] = Geo["xyz"][ii][1] - Geo["nghost"][1]
-        # ending Index for read in Y direction at physical boundary
-        for ii in np.nditer(Geo["ids"][:, -1, :]):
-            self.sorting[ii, 0, 1, 1] = Geo["xyz"][ii][1]
-        # ending Index for read in Z direction inside physical domain
-        for ii in np.nditer(Geo["ids"][:, :, :-1]):
-            self.sorting[ii, 0, 2, 1] = Geo["xyz"][ii][2] - Geo["nghost"][2]
-        # ending Index for read in Z direction at physical boundary
-        for ii in np.nditer(Geo["ids"][:, :, -1]):
-            self.sorting[ii, 0, 2, 1] = Geo["xyz"][ii][2]
-
-        #** Determine where the loaded data must be gathered
-        # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
-        self.sorting[Geo["ids"][0, :, :], 1, 0, 0] = 0
-        self.sorting[Geo["ids"][:, 0, :], 1, 1, 0] = 0
-        self.sorting[Geo["ids"][:, :, 0], 1, 2, 0] = 0
-
-        # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
-        laststart = Geo["nghost"][0]
-        for ii in range(1, Geo["nxyz"][0]):
-            laststart = laststart + (Geo["xyz"][ii][0] - 2 * Geo["nghost"][0])
-            self.sorting[Geo["ids"][ii, :, :], 1, 0, 0] = laststart
-
-        # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
-        laststart = Geo["nghost"][1]
-        for ii in range(1, Geo["nxyz"][1]):
-            laststart = laststart + (Geo["xyz"][ii][1] - 2 * Geo["nghost"][1])
-            self.sorting[Geo["ids"][:, ii, :], 1, 1, 0] = laststart
-
-        # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
-        laststart = Geo["nghost"][2]
-        for ii in range(1, Geo["nxyz"][2]):
-            laststart = laststart + (Geo["xyz"][ii][2] - 2 * Geo["nghost"][2])
-            self.sorting[Geo["ids"][:, :, ii], 1, 2, 0] = laststart
-
-        self.sorting[Geo["ids"][-1, :, :], 1, 0, 1] = Geo["x"].size
-        self.sorting[Geo["ids"][:, -1, :], 1, 1, 1] = Geo["y"].size
-        self.sorting[Geo["ids"][:, :, -1], 1, 2, 1] = Geo["z"].size
-
-        # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
-        lastend = Geo["nghost"][0]
-        for ii in range(Geo["nxyz"][0]-1):
-            lastend = lastend + (Geo["xyz"][ii][0] - 2 * Geo["nghost"][0])
-            self.sorting[Geo["ids"][ii, :, :], 1, 0, 1] = lastend
-
-        # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
-        lastend = Geo["nghost"][1]
-        for ii in range(Geo["nxyz"][1]-1):
-            lastend = lastend + (Geo["xyz"][ii][1] - 2 * Geo["nghost"][1])
-            self.sorting[Geo["ids"][:, ii, :], 1, 1, 1] = lastend
-
-        # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
-        lastend = Geo["nghost"][2]
-        for ii in range(Geo["nxyz"][2]-1):
-            lastend = lastend + (Geo["xyz"][ii][2] - 2 * Geo["nghost"][2])
-            self.sorting[Geo["ids"][:, :, ii], 1, 2, 1] = lastend
-
         return Geo
 
-    def LoadData(self):
-        for var in self.geo["vars"]:
-            self.vars[var] = dict()
-            if geo["vars"][var]["Locattion"] == "FaceX":
-                self.vars[var]["Location"] = "FaceX"
-                self.vars[var]["val"] = np.empty_like(self.FaceX["X"])
+#         #** Determine from which and up to what indeces the input arrays must be loaded
+#         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
+#         # starting Index for read in X, Y, and Z directions at physical boundaries
+#         self.sorting[Geo["ids"][0, :, :], 0, 0, 0] = 0
+#         self.sorting[Geo["ids"][:, 0, :], 0, 1, 0] = 0
+#         self.sorting[Geo["ids"][:, :, 0], 0, 2, 0] = 0
+#         # starting Index for read in X, Y, and Z directions inside physical domain
+#         self.sorting[Geo["ids"][1:, :, :], 0, 0, 0] = Geo["nghost"][0]
+#         self.sorting[Geo["ids"][:, 1:, :], 0, 1, 0] = Geo["nghost"][1]
+#         self.sorting[Geo["ids"][:, :, 1:], 0, 2, 0] = Geo["nghost"][2]
 
-            if geo["vars"][var]["Locattion"] == "FaceY":
-                self.vars[var]["Location"] = "FaceY"
-                self.vars[var]["val"] = np.empty_like(self.FaceY["Y"])
+#         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
+#         # ending Index for read in X direction inside physical domain
+#         for ii in np.nditer(Geo["ids"][:-1, :, :]):
+#             self.sorting[ii, 0, 0, 1] = Geo["xyz"][ii][0] - Geo["nghost"][0]
+#         # ending Index for read in X direction at physical boundary
+#         for ii in np.nditer(Geo["ids"][-1, :, :]):
+#             self.sorting[ii, 0, 0, 1] = Geo["xyz"][ii][0]
+#         # ending Index for read in Y direction inside physical domain
+#         for ii in np.nditer(Geo["ids"][:, :-1, :]):
+#             self.sorting[ii, 0, 1, 1] = Geo["xyz"][ii][1] - Geo["nghost"][1]
+#         # ending Index for read in Y direction at physical boundary
+#         for ii in np.nditer(Geo["ids"][:, -1, :]):
+#             self.sorting[ii, 0, 1, 1] = Geo["xyz"][ii][1]
+#         # ending Index for read in Z direction inside physical domain
+#         for ii in np.nditer(Geo["ids"][:, :, :-1]):
+#             self.sorting[ii, 0, 2, 1] = Geo["xyz"][ii][2] - Geo["nghost"][2]
+#         # ending Index for read in Z direction at physical boundary
+#         for ii in np.nditer(Geo["ids"][:, :, -1]):
+#             self.sorting[ii, 0, 2, 1] = Geo["xyz"][ii][2]
 
-            elif geo["vars"][var]["Locattion"] == "FaceZ":
-                self.vars[var]["Location"] = "FaceZ"
-                self.vars[var]["val"] = np.empty_like(self.FaceZ["Z"])
-            else:
-                sys.exit("The location of variable is not Implimented yet")
+#         #** Determine where the loaded data must be gathered
+#         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
+#         self.sorting[Geo["ids"][0, :, :], 1, 0, 0] = 0
+#         self.sorting[Geo["ids"][:, 0, :], 1, 1, 0] = 0
+#         self.sorting[Geo["ids"][:, :, 0], 1, 2, 0] = 0
 
-        for ii in range(self.NBlocks):
-            data = np.load(self.BaseAddress+self.geo["Files"][ii], allow_pickle=True, encoding="bytes")
-            for var in self.geo["vars"]:
-                XOffset = 0
-                YOffset = 0
-                ZOffset = 0
-                if self.geo["BlockLocation"][ii][]
+#         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
+#         laststart = Geo["nghost"][0]
+#         for ii in range(1, Geo["nxyz"][0]):
+#             laststart = laststart + (Geo["xyz"][ii][0] - 2 * Geo["nghost"][0])
+#             self.sorting[Geo["ids"][ii, :, :], 1, 0, 0] = laststart
 
-        return
+#         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
+#         laststart = Geo["nghost"][1]
+#         for ii in range(1, Geo["nxyz"][1]):
+#             laststart = laststart + (Geo["xyz"][ii][1] - 2 * Geo["nghost"][1])
+#             self.sorting[Geo["ids"][:, ii, :], 1, 1, 0] = laststart
+
+#         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
+#         laststart = Geo["nghost"][2]
+#         for ii in range(1, Geo["nxyz"][2]):
+#             laststart = laststart + (Geo["xyz"][ii][2] - 2 * Geo["nghost"][2])
+#             self.sorting[Geo["ids"][:, :, ii], 1, 2, 0] = laststart
+
+#         self.sorting[Geo["ids"][-1, :, :], 1, 0, 1] = Geo["x"].size
+#         self.sorting[Geo["ids"][:, -1, :], 1, 1, 1] = Geo["y"].size
+#         self.sorting[Geo["ids"][:, :, -1], 1, 2, 1] = Geo["z"].size
+
+#         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
+#         lastend = Geo["nghost"][0]
+#         for ii in range(Geo["nxyz"][0]-1):
+#             lastend = lastend + (Geo["xyz"][ii][0] - 2 * Geo["nghost"][0])
+#             self.sorting[Geo["ids"][ii, :, :], 1, 0, 1] = lastend
+
+#         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
+#         lastend = Geo["nghost"][1]
+#         for ii in range(Geo["nxyz"][1]-1):
+#             lastend = lastend + (Geo["xyz"][ii][1] - 2 * Geo["nghost"][1])
+#             self.sorting[Geo["ids"][:, ii, :], 1, 1, 1] = lastend
+
+#         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
+#         lastend = Geo["nghost"][2]
+#         for ii in range(Geo["nxyz"][2]-1):
+#             lastend = lastend + (Geo["xyz"][ii][2] - 2 * Geo["nghost"][2])
+#             self.sorting[Geo["ids"][:, :, ii], 1, 2, 1] = lastend
+
+#         return Geo
+
+#    def LoadData(self):
+#        for var in self.geo["vars"]:
+#            self.vars[var] = dict()
+#            if geo["vars"][var]["Locattion"] == "FaceX":
+#                self.vars[var]["Location"] = "FaceX"
+#                self.vars[var]["val"] = np.empty_like(self.FaceX["X"])
+#
+#            if geo["vars"][var]["Locattion"] == "FaceY":
+#                self.vars[var]["Location"] = "FaceY"
+#                self.vars[var]["val"] = np.empty_like(self.FaceY["Y"])
+#
+#            elif geo["vars"][var]["Locattion"] == "FaceZ":
+#                self.vars[var]["Location"] = "FaceZ"
+#                self.vars[var]["val"] = np.empty_like(self.FaceZ["Z"])
+#            else:
+#                sys.exit("The location of variable is not Implimented yet")
+#
+#        for ii in range(self.NBlocks):
+#            data = np.load(self.BaseAddress+self.geo["Files"][ii], allow_pickle=True, encoding="bytes")
+#            for var in self.geo["vars"]:
+#                XOffset = 0
+#                YOffset = 0
+#                ZOffset = 0
+#                if self.geo["BlockLocation"][ii][]
+#
+#        return
+
