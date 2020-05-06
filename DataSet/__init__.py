@@ -16,7 +16,7 @@ import fnmatch
 import h5py as h5
 import numpy as np
 from pandas.core.internals.blocks import NumericBlock
-from scipy.interpolate import griddata
+from scipy.interpolate import RegularGridInterpolator
 from memory_profiler import profile
 
 
@@ -715,36 +715,25 @@ class DataSet:
             print("Possible locations for variables are :: ", *self.LocationOnGrid)
 
         Loc1 = self.vars[VarName]["Location"]
-        shape1 = self.__dict__[Loc1]['X'].shape
-        Len1 = np.array(shape1).prod()
-        values = np.reshape(self.vars[VarName]['val'], (Len1,))
-        points1X = np.reshape(self.__dict__[Loc1]['X'], (Len1,))
-        points1Y = np.reshape(self.__dict__[Loc1]['Y'], (Len1,))
-        points1Z = np.reshape(self.__dict__[Loc1]['Z'], (Len1,))
+        points1X = self.__dict__[Loc1]['X'][:, 0, 0]
+        points1Y = self.__dict__[Loc1]['Y'][0, :, 0]
+        points1Z = self.__dict__[Loc1]['Z'][0, 0, :]
 
-        if self.SystemOfCoords == "SPH":
-            RSinTheta1 = np.sin(points1Y) * points1X
-            points1 = np.array([RSinTheta1 * np.cos(points1Z),
-                                RSinTheta1 * np.sin(points1Z),
-                                points1X * np.cos(points1Y)])
-        else:
-            points1 = (points1X, points1Y, points1Z)
+        #TODO figure out the dimension and of shape of coordinates arrays \
+        # when transforming from SPH to CAR
+
+        InterpolateFunc = RegularGridInterpolator((points1X, points1Y, points1Z), self.vars[VarName]["val"])
 
         idata2.vars[VarName] = dict()
         idata2.vars[VarName]["Location"] = NewLocation
-
-        if idata2.SystemOfCoords == "SPH":
-            shape2 = idata2.__dict__[NewLocation]['X'].shape
-            RSinTheta2 = idata2.__dict__[NewLocation]['X'] * np.sin(idata2[NewLocation]['Y'])
-            points2X = RSinTheta2 * np.cos(idata2.__dict__[NewLocation]['Z'])
-            points2Y = RSinTheta2 * np.sin(idata2.__dict__[NewLocation]['Z'])
-            points2Z = idata2.__dict__[NewLocation]['X'] * np.cos(idata2.__dict__[NewLocation]['Y'])
-            idata2.vars[VarName]["val"] = \
-                griddata(points1, values, (points2X, points2Y, points2Z), method="linear")
-        else:
-            idata2.vars[VarName]["val"] = griddata(
-                points1, values, (idata2.__dict__[NewLocation]['X'], idata2.__dict__[NewLocation]['Y'],
-                                  idata2.__dict__[NewLocation]['Z']), method="linear")  #
+        points2X = idata2.__dict__[NewLocation]['X'][:, 0, 0]
+        points2Y = idata2.__dict__[NewLocation]['Y'][0, :, 0]
+        points2Z = idata2.__dict__[NewLocation]['Z'][0, 0, :]
+        OutputShape = idata2.__dict__[NewLocation]['X'].shape
+        Points2 = np.vstack(np.meshgrid(points2X, points2Y, points2Z, indexing="ij")).reshape(3, -1).T
+        idata2.vars[VarName]["val"] = InterpolateFunc(Points2).reshape(OutputShape)
+        return
+        
 #     @profile
     def FindGeometry(self, BlockSize, BaseAddress, Pattern, StartingBlock):
         """
@@ -878,6 +867,58 @@ class DataSet:
 
         Geo["Files"] = FilesNames[(StartingBlock * BlockSize):(StartingBlock * BlockSize + BlockSize)]
         return Geo
+
+    def Adummy(self, Coord):
+        """
+        Adummy returns an array with same shape as input coordinate array
+        with zero values.
+        """
+        return np.zeros_like(Coord['X'])
+
+    def ExtractAFromBFace(self, BxName, ByName, BzName, AxName, AyName, AzName):
+        """
+
+        :param BxName:
+        :type BxName:
+        :param ByName:
+        :type ByName:
+        :param BzName:
+        :type BzName:
+        :param AxName:
+        :type AxName:
+        :param AyName:
+        :type AyName:
+        :param AzName:
+        :type AzName:
+        :return:
+        :rtype:
+        """
+        self.Scalar(AxName, "EdgeX", self.Adummy)
+        self.Scalar(AyName, "EdgeY", self.Adummy)
+        self.Scalar(AzName, "EdgeZ", self.Adummy)
+        ## First Step, these values are zero, just to emphasis # CHECKED --> Correct
+        self.vars[AxName]["val"][:, 0, -1] = 0.0
+        self.vars[AyName]["val"][0, :, -1] = 0.0
+
+        ## Second Step, Assuming dy and dx are uniform @ upper boundery
+        dx = self.nodevect['X'][1:] - self.nodevect['X'][:-1]
+        dy = self.nodevect['Y'][1:] - self.nodevect['Y'][:-1]
+        dz = self.nodevect['Z'][1:] - self.nodevect['Z'][:-1]
+        for j in range(dy.size):
+            self.vars["Ax"]["val"][:, j + 1, -1] = self.vars[AxName]["val"][:, j, -1] - \
+                                                  0.5 * dy[j] * self.vars[BzName]["val"][:, j, -1]
+
+        for i in range(dx.size):
+            self.vars[AyName]["val"][i + 1, :, -1] = self.vars[AyName]["val"][i, :, -1] - \
+                                                  0.5 * dx[i] * self.vars[BzName]["val"][i, :, -1]
+
+        for k in range(-2, -dz.size - 2, -1):
+            self.vars[AxName]["val"][:, :, k] = self.vars[AxName]["val"][:, :, k + 1] - \
+                                             self.vars[ByName]["val"][:, :, k + 1] * dz[k + 1]
+
+        for k in range(-2, -dz.size - 2, -1):
+            self.vars[AyName]["val"][:, :, k] = self.vars[AyName]["val"][:, :, k + 1] + \
+                                             self.vars[BxName]["val"][:, :, k + 1] * dz[k + 1]
 
 #         #** Determine from which and up to what indeces the input arrays must be loaded
 #         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]

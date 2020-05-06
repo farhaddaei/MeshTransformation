@@ -1,11 +1,14 @@
 /.idea/
 /example/*.h5
+/example/*.7z
+/example/*.npz
+example/*.dat
 /MeshTransformation.egg-info/
 /example/.ipynb_checkpoints/
 DataSet/__pycache__/
 example/Computing the relative helicity.ipynb
 example/Test.ipynb
 /example/.ipynb_checkpoints/
-/example/LoadMe.7z
-/example/LoadMeLast.7z
-/example/LoadMeLast.npz
+/example/.ipynb_checkpoints/
+DataSet/.ipynb_checkpoints/
+
