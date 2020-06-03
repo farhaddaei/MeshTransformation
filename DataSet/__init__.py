@@ -96,6 +96,9 @@ class DataSet:
             self.sorting = np.empty((self.NBlocks, 2, 3, 2), dtype=np.int)
             self.sorting[:] = -10000
             self.geo = self.FindGeometry(NBlocks, BaseAddress, Pattern, UseBlock)
+            print("Following parameters are found in the given file :: ")
+            for v in self.geo["vars"].keys():
+                print(" ", v, " (defined on", self.geo["vars"][v]["Location"], ")", sep='')
             self.NCell = (self.geo["x"].size - 1, self.geo["y"].size - 1, self.geo["z"].size - 1)
             self.nodevect[self.Direction[0]] = self.geo["x"]
             self.nodevect[self.Direction[1]] = self.geo["y"]
@@ -764,16 +767,19 @@ class DataSet:
             sys.exit("---<( Error :: some file are missing )>---")
         elif NumFiles == 0:
             sys.exit("---<( No file found )>---")
-        NumBlocks = NumFiles // BlockSize
+        # NumBlocks = NumFiles // BlockSize
 
         Geo = dict()  # everything will store here
         xs, ys, zs, xvec, yvec, zvec, xyz = [], [], [], [], [], [], []
         # extract important info from files in a block
-        data = []
         f = BaseAddress + FilesNames[0]
-        temp = np.load(f)
-        xs, ys, zs = temp["x"], temp["y"], temp["z"]
-        del temp
+        data = np.load(f, allow_pickle=True, encoding="bytes")
+        xs, ys, zs = data["x"], data["y"], data["z"]
+        xyz.append((data["x"].size, data["y"].size, data["z"].size))
+        xvec.append(data["x"])
+        yvec.append(data["y"])
+        zvec.append(data["z"])
+
         for ii in range(1, BlockSize):
             f = BaseAddress + FilesNames[ii]
             data = np.load(f, allow_pickle=True, encoding="bytes")
@@ -785,51 +791,10 @@ class DataSet:
             yvec.append(data["y"])
             zvec.append(data["z"])
 
-        Geo["x"] = np.unique(xs)  # find unique velues and sort them
+        Geo["x"] = np.unique(xs)  # find unique values and sort them
         Geo["y"] = np.unique(ys)
         Geo["z"] = np.unique(zs)
-#         nx = xs.size
-#         ny = ys.size
-#         nz = zs.size
-#         ids = np.empty((nx, ny, nz), dtype=np.int)
-#         BlockLocation = np.empty((BlockSize, 3), dtype=np.int)
-#         for p in range(BlockSize):
-#             ii = np.where(xs == xvec[p][0])[0]
-#             jj = np.where(ys == yvec[p][0])[0]
-#             kk = np.where(zs == zvec[p][0])[0]
-#             ids[ii, jj, kk] = p
-#             BlockLocation[p, 0] = ii
-#             BlockLocation[p, 1] = jj
-#             BlockLocation[p, 2] = kk
-#         Geo["ids"] = ids
-#         Geo["BlockLocation"] = BlockLocation
 
-#         Geo["xvec"] = xvec
-#         Geo["yvec"] = yvec
-
-#         Geo["zvec"] = zvec
-#         Geo["xyz"] = xyz
-#         Geo["nxyz"] = (nx, ny, nz)
-
-#         Geo["nghost"] = data["num_ghost_cells"]
-#         nxghost = Geo["nghost"][0]
-#         nyghost = Geo["nghost"][1]
-#         nzghost = Geo["nghost"][2]
-#         Geo["x"] = xvec[ids[0, 0, 0]][:nx]  # cut Ghost zones
-#         Geo["y"] = yvec[ids[0, 0, 0]][:ny]  # cut Ghost zones
-#         Geo["z"] = zvec[ids[0, 0, 0]][:nz]  # cut Ghost zones
-#         for ix in ids[:, 0, 0]:
-#             Geo["x"] = np.concatenate((Geo["x"], xvec[ix][nxghost:-nxghost]))
-
-#         for iy in ids[0, :, 0]:
-#             Geo["y"] = np.concatenate((Geo["y"], yvec[iy][nyghost:-nyghost]))
-
-#         for iz in ids[0, 0, :]:
-#             Geo["z"] = np.concatenate((Geo["z"], zvec[iz][nzghost:-nzghost]))
-
-#         Geo["x"] = np.concatenate((Geo["x"], xvec[ids[-1, 0, 0]][-nxghost:]))
-#         Geo["y"] = np.concatenate((Geo["y"], yvec[ids[0, -1, 0]][-nyghost:]))
-#         Geo["z"] = np.concatenate((Geo["z"], zvec[ids[0, 0, -1]][-nzghost:]))
         # to check the location of var (Face, Cell, Edge, Node)
         Nodes = (data["x"].size, data["y"].size, data["z"].size)
         Cells = (data["x"].size - 1, data["y"].size - 1, data["z"].size - 1)
