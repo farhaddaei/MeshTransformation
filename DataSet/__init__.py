@@ -26,6 +26,7 @@ class DataSet:
 
     """
 #     @profile
+
     def __init__(self, SystemOfCoords, NCell=None, startval=None, endval=None,
                  BaseAddress=None, Pattern=None, NBlocks=None, UseBlock=None):
         """
@@ -288,9 +289,9 @@ class DataSet:
         :return:
         :rtype:
         """
-        if (self.vars[VarNameX]["Location"] != "FaceX" or
-                self.vars[VarNameY]["Location"] != "FaceY" or
-                self.vars[VarNameZ]["Location"] != "FaceZ"):
+        if (self.vars[VarNameX]["Location"] != "FaceX"
+                or self.vars[VarNameY]["Location"] != "FaceY"
+                or self.vars[VarNameZ]["Location"] != "FaceZ"):
             print("Input parameters must be repesented on Faces!!")
             return
 
@@ -335,13 +336,13 @@ class DataSet:
         # Curl A |x
         self.vars[NewVarX] = dict()
         self.vars[NewVarX]["Location"] = "Cells"
-        Temp1 = 0.5 * (self.vars[VarNameZ]["val"][:-1, :, :] +
-                       self.vars[VarNameZ]["val"][1:, :, :])
-        Temp2 = 0.5 * (self.vars[VarNameY]["val"][:-1, :, :] +
-                       self.vars[VarNameY]["val"][1:, :, :])
+        Temp1 = 0.5 * (self.vars[VarNameZ]["val"][:-1, :, :]
+                       + self.vars[VarNameZ]["val"][1:, :, :])
+        Temp2 = 0.5 * (self.vars[VarNameY]["val"][:-1, :, :]
+                       + self.vars[VarNameY]["val"][1:, :, :])
         LeftTerm = (Temp1[:, 1:, :] - Temp1[:, :-1, :]) / \
-                   (self.FaceY['Y'][:, 1:, :] -
-                    self.FaceY['Y'][:, :-1, :])
+                   (self.FaceY['Y'][:, 1:, :]
+                    - self.FaceY['Y'][:, :-1, :])
         self.vars[NewVarX]['val'] = \
             LeftTerm - (Temp2[:, :, 1:] - Temp2[:, :, :-1]) / \
             (self.FaceZ['Z'][:, :, 1:] - self.FaceZ['Z'][:, :, :-1])
@@ -350,9 +351,9 @@ class DataSet:
         self.vars[NewVarY] = dict()
         self.vars[NewVarY]["Location"] = "Cells"
         Temp1 = 0.5 * \
-                (self.vars[VarNameX]["val"][:, :-1, :] + self.vars[VarNameX]["val"][:, 1:, :])
+            (self.vars[VarNameX]["val"][:, :-1, :] + self.vars[VarNameX]["val"][:, 1:, :])
         Temp2 = 0.5 * \
-                (self.vars[VarNameZ]["val"][:, :-1, :] + self.vars[VarNameZ]["val"][:, 1:, :])
+            (self.vars[VarNameZ]["val"][:, :-1, :] + self.vars[VarNameZ]["val"][:, 1:, :])
         LeftTerm = (Temp1[:, :, 1:] - Temp1[:, :, :-1]) / \
                    (self.FaceZ['Z'][:, :, 1:] - self.FaceZ['Z'][:, :, :-1])
         self.vars[NewVarY]['val'] = \
@@ -363,14 +364,14 @@ class DataSet:
         self.vars[NewVarZ] = dict()
         self.vars[NewVarZ]["Location"] = "Cells"
         Temp1 = 0.5 * \
-                (self.vars[VarNameY]["val"][:, :, :-1] + self.vars[VarNameY]["val"][:, :, 1:])
+            (self.vars[VarNameY]["val"][:, :, :-1] + self.vars[VarNameY]["val"][:, :, 1:])
         Temp2 = 0.5 * \
-                (self.vars[VarNameX]["val"][:, :, :-1] + self.vars[VarNameX]["val"][:, :, 1:])
+            (self.vars[VarNameX]["val"][:, :, :-1] + self.vars[VarNameX]["val"][:, :, 1:])
         LeftTerm = (Temp1[1:, :, :] - Temp1[:-1, :, :]) / \
                    (self.FaceX['X'][1:, :, :] - self.FaceX['X'][:-1, :, :])
         self.vars[NewVarZ]['val'] = LeftTerm - \
-                                    (Temp2[:, 1:, :] - Temp2[:, :-1, :]) / \
-                                    (self.FaceY['Y'][:, 1:, :] - self.FaceY['Y'][:, :-1, :])
+            (Temp2[:, 1:, :] - Temp2[:, :-1, :]) / \
+            (self.FaceY['Y'][:, 1:, :] - self.FaceY['Y'][:, :-1, :])
 
     def CurlEdgeToFace(self, VarNameX, VarNameY, VarNameZ, NewVarX, NewVarY, NewVarZ):
         """
@@ -447,9 +448,9 @@ class DataSet:
         :return:
         :rtype:
         """
-        if (self.vars[VarNameX]["Location"] != "FaceX" or
-                self.vars[VarNameY]["Location"] != "FaceY" or
-                self.vars[VarNameZ]["Location"] != "FaceZ"):
+        if (self.vars[VarNameX]["Location"] != "FaceX"
+                or self.vars[VarNameY]["Location"] != "FaceY"
+                or self.vars[VarNameZ]["Location"] != "FaceZ"):
             print("@CurlFaceToEdge :: Input parameters must be repesented on Faces!!")
             return
         # X-Component
@@ -562,22 +563,22 @@ class DataSet:
         self.vars[NewVarX]["Location"] = "Cells"
         self.vars[NewVarX]["val"] = np.empty_like(self.Cells["X"])
         self.vars[NewVarX]["val"] = \
-            0.25 * (self.vars[VarNameX]["val"][:, :-1, :-1] + self.vars[VarNameX]["val"][:, 1:, 1:] +
-                    self.vars[VarNameX]["val"][:, 1:, :-1] + self.vars[VarNameX]["val"][:, :-1, 1:])
+            0.25 * (self.vars[VarNameX]["val"][:, :-1, :-1] + self.vars[VarNameX]["val"][:, 1:, 1:]
+                    + self.vars[VarNameX]["val"][:, 1:, :-1] + self.vars[VarNameX]["val"][:, :-1, 1:])
 
         self.vars[NewVarY] = dict()
         self.vars[NewVarY]["Location"] = "Cells"
         self.vars[NewVarY]["val"] = np.empty_like(self.Cells["Y"])
         self.vars[NewVarY]["val"] = \
-            0.25 * (self.vars[VarNameY]["val"][1:, :, 1:] + self.vars[VarNameY]["val"][:-1, :, :-1] +
-                    self.vars[VarNameY]["val"][1:, :, :-1] + self.vars[VarNameY]["val"][:-1, :, 1:])
+            0.25 * (self.vars[VarNameY]["val"][1:, :, 1:] + self.vars[VarNameY]["val"][:-1, :, :-1]
+                    + self.vars[VarNameY]["val"][1:, :, :-1] + self.vars[VarNameY]["val"][:-1, :, 1:])
 
         self.vars[NewVarZ] = dict()
         self.vars[NewVarZ]["Location"] = "Cells"
         self.vars[NewVarZ]["val"] = np.empty_like(self.Cells["Z"])
         self.vars[NewVarZ]["val"] = \
-            0.25 * (self.vars[VarNameZ]["val"][1:, 1:, :] + self.vars[VarNameZ]["val"][:-1, :-1, :] +
-                    self.vars[VarNameZ]["val"][1:, :-1, :] + self.vars[VarNameZ]["val"][:-1, 1:, :])
+            0.25 * (self.vars[VarNameZ]["val"][1:, 1:, :] + self.vars[VarNameZ]["val"][:-1, :-1, :]
+                    + self.vars[VarNameZ]["val"][1:, :-1, :] + self.vars[VarNameZ]["val"][:-1, 1:, :])
         return
 
     def Cross(self, Var1X, Var1Y, Var1Z, Var2X, Var2Y, Var2Z, ResX, ResY, ResZ):
@@ -607,17 +608,17 @@ class DataSet:
         self.vars[ResX] = dict()
         self.vars[ResX]["Location"] = "Cells"
         self.vars[ResX]["val"] = self.vars[Var1Y]["val"] * self.vars[Var2Z]["val"] - \
-                                 self.vars[Var1Z]["val"] * self.vars[Var2Y]["val"]
+            self.vars[Var1Z]["val"] * self.vars[Var2Y]["val"]
 
         self.vars[ResY] = dict()
         self.vars[ResY]["Location"] = "Cells"
         self.vars[ResY]["val"] = self.vars[Var1Z]["val"] * self.vars[Var2X]["val"] - \
-                                 self.vars[Var1X]["val"] * self.vars[Var2Z]["val"]
+            self.vars[Var1X]["val"] * self.vars[Var2Z]["val"]
 
         self.vars[ResZ] = dict()
         self.vars[ResZ]["Location"] = "Cells"
         self.vars[ResZ]["val"] = self.vars[Var1X]["val"] * self.vars[Var2Y]["val"] - \
-                                 self.vars[Var1Y]["val"] * self.vars[Var2X]["val"]
+            self.vars[Var1Y]["val"] * self.vars[Var2X]["val"]
 
         return
 
@@ -650,20 +651,20 @@ class DataSet:
             ##
             elif self.vars[k]['Location'] == "EdgeX":  # save Edge-located vars on Cell centers
                 GVarsCell.create_dataset(k, data=np.transpose(
-                    0.25 * (self.vars[k]["val"][:, :-1, :-1] + self.vars[k]["val"][:, 1:, :-1] +
-                            self.vars[k]["val"][:, :-1, 1:] + self.vars[k]["val"][:, 1:, 1:])
+                    0.25 * (self.vars[k]["val"][:, :-1, :-1] + self.vars[k]["val"][:, 1:, :-1]
+                            + self.vars[k]["val"][:, :-1, 1:] + self.vars[k]["val"][:, 1:, 1:])
                 ))
             ##
             elif self.vars[k]['Location'] == "EdgeY":  # save Edge-located vars on Cell centers
                 GVarsCell.create_dataset(k, data=np.transpose(
-                    0.25 * (self.vars[k]["val"][:-1, :, :-1] + self.vars[k]["val"][1:, :, :-1] +
-                            self.vars[k]["val"][:-1, :, 1:] + self.vars[k]["val"][1:, :, 1:])
+                    0.25 * (self.vars[k]["val"][:-1, :, :-1] + self.vars[k]["val"][1:, :, :-1]
+                            + self.vars[k]["val"][:-1, :, 1:] + self.vars[k]["val"][1:, :, 1:])
                 ))
             ##
             elif self.vars[k]['Location'] == "EdgeZ":  # save Edge-located vars on Cell centers
                 GVarsCell.create_dataset(k, data=np.transpose(
-                    0.25 * (self.vars[k]["val"][:-1, :-1, :] + self.vars[k]["val"][1:, :-1, :] +
-                            self.vars[k]["val"][:-1, 1:, :] + self.vars[k]["val"][1:, 1:, :])
+                    0.25 * (self.vars[k]["val"][:-1, :-1, :] + self.vars[k]["val"][1:, :-1, :]
+                            + self.vars[k]["val"][:-1, 1:, :] + self.vars[k]["val"][1:, 1:, :])
                 ))
             ##
             elif self.vars[k]['Location'] == "FaceX":  # save Edge-located vars on Cell centers
@@ -722,7 +723,7 @@ class DataSet:
         points1Y = self.__dict__[Loc1]['Y'][0, :, 0]
         points1Z = self.__dict__[Loc1]['Z'][0, 0, :]
 
-        #TODO figure out the dimension and of shape of coordinates arrays \
+        # TODO figure out the dimension and of shape of coordinates arrays \
         # when transforming from SPH to CAR
 
         InterpolateFunc = RegularGridInterpolator((points1X, points1Y, points1Z), self.vars[VarName]["val"])
@@ -736,7 +737,7 @@ class DataSet:
         Points2 = np.vstack(np.meshgrid(points2X, points2Y, points2Z, indexing="ij")).reshape(3, -1).T
         idata2.vars[VarName]["val"] = InterpolateFunc(Points2).reshape(OutputShape)
         return
-        
+
 #     @profile
     def FindGeometry(self, BlockSize, BaseAddress, Pattern, StartingBlock):
         """
@@ -883,29 +884,29 @@ class DataSet:
         self.Scalar(AxName, "EdgeX", self.Adummy)
         self.Scalar(AyName, "EdgeY", self.Adummy)
         self.Scalar(AzName, "EdgeZ", self.Adummy)
-        ## First Step, these values are zero, just to emphasis # CHECKED --> Correct
+        # First Step, these values are zero, just to emphasis # CHECKED --> Correct
         self.vars[AxName]["val"][:, 0, -1] = 0.0
         self.vars[AyName]["val"][0, :, -1] = 0.0
 
-        ## Second Step, Assuming dy and dx are uniform @ upper boundery
+        # Second Step, Assuming dy and dx are uniform @ upper boundery
         dx = self.nodevect['X'][1:] - self.nodevect['X'][:-1]
         dy = self.nodevect['Y'][1:] - self.nodevect['Y'][:-1]
         dz = self.nodevect['Z'][1:] - self.nodevect['Z'][:-1]
         for j in range(dy.size):
             self.vars["Ax"]["val"][:, j + 1, -1] = self.vars[AxName]["val"][:, j, -1] - \
-                                                  0.5 * dy[j] * self.vars[BzName]["val"][:, j, -1]
+                0.5 * dy[j] * self.vars[BzName]["val"][:, j, -1]
 
         for i in range(dx.size):
             self.vars[AyName]["val"][i + 1, :, -1] = self.vars[AyName]["val"][i, :, -1] - \
-                                                  0.5 * dx[i] * self.vars[BzName]["val"][i, :, -1]
+                0.5 * dx[i] * self.vars[BzName]["val"][i, :, -1]
 
         for k in range(-2, -dz.size - 2, -1):
             self.vars[AxName]["val"][:, :, k] = self.vars[AxName]["val"][:, :, k + 1] - \
-                                             self.vars[ByName]["val"][:, :, k + 1] * dz[k + 1]
+                self.vars[ByName]["val"][:, :, k + 1] * dz[k + 1]
 
         for k in range(-2, -dz.size - 2, -1):
             self.vars[AyName]["val"][:, :, k] = self.vars[AyName]["val"][:, :, k + 1] + \
-                                             self.vars[BxName]["val"][:, :, k + 1] * dz[k + 1]
+                self.vars[BxName]["val"][:, :, k + 1] * dz[k + 1]
 
 #         #** Determine from which and up to what indeces the input arrays must be loaded
 #         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
@@ -1012,4 +1013,3 @@ class DataSet:
 #                if self.geo["BlockLocation"][ii][]
 #
 #        return
-
