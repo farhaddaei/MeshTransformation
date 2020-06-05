@@ -98,7 +98,7 @@ class DataSet:
             self.geo = self.FindGeometry(NBlocks, BaseAddress, Pattern, UseBlock)
             print("Following parameters are found in the given file :: ")
             for v in self.geo["vars"].keys():
-                print(" ", v, " (defined on", self.geo["vars"][v]["Location"], ")", sep='')
+                print(" ", v, " (defined on ", self.geo["vars"][v]["Location"], ")", sep='')
             self.NCell = (self.geo["x"].size - 1, self.geo["y"].size - 1, self.geo["z"].size - 1)
             self.nodevect[self.Direction[0]] = self.geo["x"]
             self.nodevect[self.Direction[1]] = self.geo["y"]
@@ -770,15 +770,23 @@ class DataSet:
         # NumBlocks = NumFiles // BlockSize
 
         Geo = dict()  # everything will store here
-        xs, ys, zs, xvec, yvec, zvec, xyz = [], [], [], [], [], [], []
+        # xs, ys, zs, xvec, yvec, zvec, xyz = [], [], [], [], [], [], []
+        xs, ys, zs = [], [], []
         # extract important info from files in a block
         f = BaseAddress + FilesNames[0]
         data = np.load(f, allow_pickle=True, encoding="bytes")
         xs, ys, zs = data["x"], data["y"], data["z"]
-        xyz.append((data["x"].size, data["y"].size, data["z"].size))
-        xvec.append(data["x"])
-        yvec.append(data["y"])
-        zvec.append(data["z"])
+        try:
+            Geo['num_ghost_cells'] = data.f.num_ghost_cells
+            print("---<( Input files include Ghost-Cells, those cells will be ignored )>---")
+        except:
+            print("---<( Input files did not include Ghost-Cells )>---")
+            Geo['num_ghost_cells'] = np.array([0, 0, 0], dtype=np.int)
+
+        # xyz.append((data["x"].size, data["y"].size, data["z"].size))
+        # xvec.append(data["x"])
+        # yvec.append(data["y"])
+        # zvec.append(data["z"])
 
         for ii in range(1, BlockSize):
             f = BaseAddress + FilesNames[ii]
@@ -786,14 +794,28 @@ class DataSet:
             xs = np.concatenate((xs, data["x"]))
             ys = np.concatenate((ys, data["y"]))
             zs = np.concatenate((zs, data["z"]))
-            xyz.append((data["x"].size, data["y"].size, data["z"].size))
-            xvec.append(data["x"])
-            yvec.append(data["y"])
-            zvec.append(data["z"])
+            # xyz.append((data["x"].size, data["y"].size, data["z"].size))
+            # xvec.append(data["x"])
+            # yvec.append(data["y"])
+            # zvec.append(data["z"])
 
-        Geo["x"] = np.unique(xs)  # find unique values and sort them
-        Geo["y"] = np.unique(ys)
-        Geo["z"] = np.unique(zs)
+        if Geo["num_ghost_cells"][0] > 0:
+            xBeg = Geo["num_ghost_cells"][0]
+            Geo["x"] = np.unique(xs)[xBeg:-xBeg]  # find unique values and sort them
+        else:
+            Geo["x"] = np.unique(xs)  # find unique values and sort them
+
+        if Geo["num_ghost_cells"][1] > 0:
+            yBeg = Geo["num_ghost_cells"][1]
+            Geo["y"] = np.unique(ys)[yBeg:-yBeg]  # find unique values and sort them
+        else:
+            Geo["y"] = np.unique(ys)  # find unique values and sort them
+
+        if Geo["num_ghost_cells"][2] > 0:
+            zBeg = Geo["num_ghost_cells"][2]
+            Geo["z"] = np.unique(zs)[zBeg:-zBeg]  # find unique values and sort them
+        else:
+            Geo["z"] = np.unique(zs)  # find unique values and sort them
 
         # to check the location of var (Face, Cell, Edge, Node)
         Nodes = (data["x"].size, data["y"].size, data["z"].size)
