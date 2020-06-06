@@ -11,11 +11,10 @@ example/Test.ipynb
 /example/.ipynb_checkpoints/
 /example/.ipynb_checkpoints/
 DataSet/.ipynb_checkpoints/
-
+/.virtual_documents/
 /.virtual_documents/example/RunDS.ipynb.py
 /.virtual_documents/example/RunMe.ipynb.py
 /.virtual_documents/example/RunMe_MFM_Data.ipynb.py
 /.virtual_documents/example/Untitled.ipynb.py
 /.virtual_documents/example/Computing the relative helicity.ipynb.py
 /.virtual_documents/example/Load Mesh and Data.ipynb.py
-/example/CompareWithParaview.pvsm
