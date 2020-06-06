@@ -17,12 +17,11 @@ git  4. run following command in terminal
   
   Usage
   -------
-    >>> from DataSet import DataSet
-    >>> DS1 = DataSet((Ny, Ny, Nz), (X0, Y0, Z0), (X1, Y1, Z1), "CAR")
-    >>> # FunctionX, FunctionY, and FunctionZ are functions to evluate each component of
-    >>> # vector field in different directions and on Cell center of mesh structure
-    >>> DS1.Scalar("XComponent", "Cells", FunctionX)
-    >>> DS1.Scalar("YComponent", "Cells", FunctionY)
-    >>> DS1.Scalar("ZComponent", "Cells", FunctionZ)
-    >>> DS1.DivCell("XComponent", "YComponent", "ZComponent", "NewVar")
-    >>> DS1.Write2HDF5("Filename.h5")
+  To see the commands and results look at __"RunMe_MFM_Data.ipynb"__ and also Paraview state file in __example__ directory.
+  
+  Successfully tested for three cases:
+   - extract $\vec{A}$ from $\vec{B}$ (MFM Data), recalculate $\vec{B}$ in the same mesh (No interpolation)
+   - extract $\vec{A}$ from $\vec{B}$ (MFM Data), interpolate $\vec{A}$ into another mesh with same resolution
+   - extract $\vec{A}$ from $\vec{B}$ (MFM Data), interpolate $\vec{A}$ into another mesh with lower resolution
+  
+  
