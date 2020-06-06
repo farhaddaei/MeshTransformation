@@ -167,8 +167,12 @@ class DataSet:
 
         for i in range(self.Az["Area"].shape[2]):
             self.Az["Area"][:, :, i] = axy
-#        if self.LoadFromFile:
-#            self.LoadData()
+
+        if self.LoadFromFile:
+            if self.NBlocks == 1:
+                self.LoadData()
+            else:
+                print("Loading data from multi-block is not supported yet")
         return
 
     def Scalar(self, VarName, Location, function):
@@ -884,29 +888,45 @@ class DataSet:
         self.Scalar(AxName, "EdgeX", self.Adummy)
         self.Scalar(AyName, "EdgeY", self.Adummy)
         self.Scalar(AzName, "EdgeZ", self.Adummy)
-        # First Step, these values are zero, just to emphasis # CHECKED --> Correct
-        self.vars[AxName]["val"][:, 0, -1] = 0.0
-        self.vars[AyName]["val"][0, :, -1] = 0.0
 
-        # Second Step, Assuming dy and dx are uniform @ upper boundery
         dx = self.nodevect['X'][1:] - self.nodevect['X'][:-1]
         dy = self.nodevect['Y'][1:] - self.nodevect['Y'][:-1]
         dz = self.nodevect['Z'][1:] - self.nodevect['Z'][:-1]
-        for j in range(dy.size):
-            self.vars["Ax"]["val"][:, j + 1, -1] = self.vars[AxName]["val"][:, j, -1] - \
-                0.5 * dy[j] * self.vars[BzName]["val"][:, j, -1]
+        BetaX = np.empty_like(self.EdgeX["X"][:, :, 0])
+        BetaY = np.empty_like(self.EdgeY["Y"][:, :, 0])
 
-        for i in range(dx.size):
-            self.vars[AyName]["val"][i + 1, :, -1] = self.vars[AyName]["val"][i, :, -1] - \
-                0.5 * dx[i] * self.vars[BzName]["val"][i, :, -1]
+        BetaX[:, 0] = 0.0
+        BetaY[0, :] = 0.0
+        BzOnTop = self.vars[BzName]['val'][:, :, -1]
+        for j in range(1, dy.size + 1):
+            for i in range(dx.size):
+                BetaX[i, j] = -0.5 * np.sum(dy[:j] * BzOnTop[i, :j])
 
-        for k in range(-2, -dz.size - 2, -1):
-            self.vars[AxName]["val"][:, :, k] = self.vars[AxName]["val"][:, :, k + 1] - \
-                self.vars[ByName]["val"][:, :, k + 1] * dz[k + 1]
+        for i in range(1, dx.size + 1):
+            for j in range(dy.size):
+                BetaY[i, j] = 0.5 * np.sum(dx[:i] * BzOnTop[:i, j])
 
-        for k in range(-2, -dz.size - 2, -1):
-            self.vars[AyName]["val"][:, :, k] = self.vars[AyName]["val"][:, :, k + 1] + \
-                self.vars[BxName]["val"][:, :, k + 1] * dz[k + 1]
+        self.vars[AxName]['val'][:, :, -1] = BetaX[:, :]
+        self.vars[AyName]['val'][:, :, -1] = BetaY[:, :]
+
+        for k in range(-2, -dz.size-2, -1):
+            BetaX[:, :] = BetaX[:, :] - dz[k + 1] * self.vars[ByName]['val'][:, :, k + 1]
+            BetaY[:, :] = BetaY[:, :] + dz[k + 1] * self.vars[BxName]['val'][:, :, k + 1]
+            self.vars[AxName]['val'][:, :, k] = BetaX[:, :]
+            self.vars[AyName]['val'][:, :, k] = BetaY[:, :]
+        return
+
+    def LoadData(self):
+        Beg = self.geo['num_ghost_cells'][0]
+        data = np.load(self.BaseAddress + self.geo["Files"][0], allow_pickle=True, encoding="bytes")
+        for v in self.geo["vars"].keys():
+            self.Scalar(v, self.geo["vars"][v]["Location"], self.Adummy)
+            if Beg > 0:
+                self.vars[v]["val"] = data[v][Beg:-Beg, Beg:-Beg, Beg:-Beg]
+            else:
+                self.vars[v]["val"] = data[v]
+            print(v, "is loaded successfully.", sep='\t')
+        return
 
 #         #** Determine from which and up to what indeces the input arrays must be loaded
 #         # self.sorting[BlockID, R/W, X/Y/Z, Start/End]
