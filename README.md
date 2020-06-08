@@ -9,9 +9,10 @@
   -------
   1. Create a conda envirment with Python >= 3.6
   2. Activate the new env
-git  4. run following command in terminal
+  3. git clone https://github.com/farhaddaei/MeshTransformation
+  4. run following command in directory where __setup.py__ resides (while the new conda env is activated)
   
-     pip install .
+     __pip install -e .__
   
   It will install the package and also the dependencies
   
