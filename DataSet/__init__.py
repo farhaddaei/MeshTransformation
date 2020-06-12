@@ -15,6 +15,7 @@ import sys
 import fnmatch
 import h5py as h5
 import numpy as np
+import vtk
 # from pandas.core.internals.blocks import NumericBlock
 from scipy.interpolate import RegularGridInterpolator
 # from memory_profiler import profile
@@ -23,10 +24,8 @@ from scipy.interpolate import RegularGridInterpolator
 class DataSet:
     """
     DataSet
-
     """
 #     @profile
-
     def __init__(self, SystemOfCoords, NCell=None, startval=None, endval=None,
                  BaseAddress=None, Pattern=None, NBlocks=None, UseBlock=None):
         """
@@ -95,7 +94,7 @@ class DataSet:
             self.Pattern = Pattern
 
             self.geo = self.FindGeometry(NBlocks, BaseAddress, Pattern, UseBlock)
-            print("Following parameters are found in the given file :: ")
+            print("Following parameters are found in the given NPZ file/s :: ")
             for v in self.geo["vars"].keys():
                 print(" ", v, " (defined on ", self.geo["vars"][v]["Location"], ")", sep='')
             self.NCell = (self.geo["x"].size - 1, self.geo["y"].size - 1, self.geo["z"].size - 1)
@@ -168,6 +167,31 @@ class DataSet:
 
         if self.LoadFromFile:
             self.LoadData()
+        self.XMFHeader = """<?xml version="1.0" ?>
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
+<Xdmf Version="2.0">
+ <Domain>
+   <Grid Name="node_mesh" GridType="Uniform">
+     <Topology TopologyType="3DSMesh" NumberOfElements="{2} {1} {0}"/>"""
+        self.XMFFooter = """   </Grid>
+ </Domain>
+</Xdmf>"""
+        self.Geometry = """ <Geometry GeometryType="X_Y_Z">
+   <DataItem Dimensions="{2} {1} {0}" NumberType="Float" Precision="8" Format="HDF">
+    .//{3}:/node_coords/X
+   </DataItem>
+   <DataItem Dimensions="{2} {1} {0}" NumberType="Float" Precision="8" Format="HDF">
+    .//{3}:/node_coords/Y
+   </DataItem>
+   <DataItem Dimensions="{2} {1} {0}" NumberType="Float" Precision="8" Format="HDF">
+    .//{3}:/node_coords/Z
+   </DataItem>
+ </Geometry>"""
+        self.Attribute = """ <Attribute Name="{0}" AttributeType="Scalar" Center="{1}">
+   <DataItem Dimensions="{4} {3} {2}" NumberType="Float" Precision="8" Format="HDF">
+    .//{5}:/{6}/{0}
+   </DataItem>
+ </Attribute>"""
         return
 
     def Scalar(self, VarName, Location, function, InialVal=None):
@@ -183,7 +207,19 @@ class DataSet:
         :param function:
         :type function:
         """
+        # To make sure that new var will not overwrite old ones
         if Location in self.LocationOnGrid:
+            if VarName in self.vars.keys():
+                tempName = VarName + '_' + self.vars[VarName]["Location"]
+                if tempName in self.vars.keys():
+                    i = 1
+                    while tempName + "_{0}".format(i) in self.vars.keys():
+                        i += 1
+                    tempName = tempName + "_{0}".format(i)
+                print("---<( {0} already exists, old variable renamed to {1} )>---".
+                      format(VarName, tempName))
+                self.vars[tempName] = self.vars.pop(VarName)
+
             self.vars[VarName] = dict()
             self.vars[VarName]['Location'] = Location
             self.vars[VarName]["val"] = function(self.__dict__[Location])
@@ -623,7 +659,7 @@ class DataSet:
 
         return
 
-    def Write2HDF5(self, filename, databasename="Timestep_0"):
+    def Write2HDF5(self, filename, BaseAddress: str='./'):
         """
         inputs ::
         ---------
@@ -634,64 +670,40 @@ class DataSet:
         :type databasename:
         """
 
-        fout = h5.File(filename, 'w')
-        GTS = fout.create_group(databasename)
-        GTS.attrs["Time"] = 0.0
-
-        GVarsCell = GTS.create_group("VarsOnCell")
-        GVarsCell.attrs['coords'] = \
-            np.array([b'/cell_coords/X', b'/cell_coords/Y', b'/cell_coords/Z'], dtype='|S15')
-
-        GVarsNode = GTS.create_group("VarsOnNode")
-        GVarsNode.attrs['coords'] = \
-            np.array([b'/node_coords/X', b'/node_coords/Y', b'/node_coords/Z'], dtype='|S15')
+        fout = h5.File(BaseAddress+filename, 'w')
+        Vars = fout.create_group('vars')
+        Vars.attrs["Time"] = 0.0
+        fpXMF = open(BaseAddress+filename+".xmf", 'wt')
+        print(self.XMFHeader.format(*self.Nodes['X'].shape), file=fpXMF)
+        print(self.Geometry.format(*self.Nodes['X'].shape, filename), file=fpXMF)
 
         for k in self.vars.keys():
+            Vars.create_dataset(k, data=np.transpose(self.vars[k]["val"]))
             if self.vars[k]['Location'] == "Cells":
-                GVarsCell.create_dataset(k, data=np.transpose(self.vars[k]["val"]))
-            ##
-            elif self.vars[k]['Location'] == "EdgeX":  # save Edge-located vars on Cell centers
-                GVarsCell.create_dataset(k, data=np.transpose(
-                    0.25 * (self.vars[k]["val"][:, :-1, :-1] + self.vars[k]["val"][:, 1:, :-1]
-                            + self.vars[k]["val"][:, :-1, 1:] + self.vars[k]["val"][:, 1:, 1:])
-                ))
-            ##
-            elif self.vars[k]['Location'] == "EdgeY":  # save Edge-located vars on Cell centers
-                GVarsCell.create_dataset(k, data=np.transpose(
-                    0.25 * (self.vars[k]["val"][:-1, :, :-1] + self.vars[k]["val"][1:, :, :-1]
-                            + self.vars[k]["val"][:-1, :, 1:] + self.vars[k]["val"][1:, :, 1:])
-                ))
-            ##
-            elif self.vars[k]['Location'] == "EdgeZ":  # save Edge-located vars on Cell centers
-                GVarsCell.create_dataset(k, data=np.transpose(
-                    0.25 * (self.vars[k]["val"][:-1, :-1, :] + self.vars[k]["val"][1:, :-1, :]
-                            + self.vars[k]["val"][:-1, 1:, :] + self.vars[k]["val"][1:, 1:, :])
-                ))
-            ##
-            elif self.vars[k]['Location'] == "FaceX":  # save Edge-located vars on Cell centers
-                GVarsCell.create_dataset(k, data=np.transpose(
-                    0.5 * (self.vars[k]["val"][:-1, :, :] + self.vars[k]["val"][:1, :, :])
-                ))
-            ##
-            elif self.vars[k]['Location'] == "FaceY":  # save Edge-located vars on Cell centers
-                GVarsCell.create_dataset(k, data=np.transpose(
-                    0.5 * (self.vars[k]["val"][:, :-1, :] + self.vars[k]["val"][:, 1:, :])
-                ))
-            ##
-            elif self.vars[k]['Location'] == "FaceZ":  # save Edge-located vars on Cell centers
-                GVarsCell.create_dataset(k, data=np.transpose(
-                    0.5 * (self.vars[k]["val"][:, :, :-1] + self.vars[k]["val"][:, :, 1:])
-                ))
-            ##
+                print(self.Attribute.format(k, "Cell", *self.vars[k]['val'].shape, filename, 'vars'),
+                      file=fpXMF)
+            elif self.vars[k]['Location'] in ["EdgeX", "EdgeY", "EdgeZ"]:
+                print(self.Attribute.format(k, "Edge", *self.vars[k]['val'].shape, filename, 'vars'),
+                      file=fpXMF)
+            elif self.vars[k]['Location'] in ["FaceX", "FaceY", "FaceZ"]:
+                print(self.Attribute.format(k, "Face", *self.vars[k]['val'].shape, filename, 'vars'),
+                      file=fpXMF)
             elif self.vars[k]['Location'] == "Nodes":
-                GVarsNode.create_dataset(k, data=np.transpose(self.vars[k]["val"]))
-
+                print(self.Attribute.format(k, "Node", *self.vars[k]['val'].shape, filename, 'vars'),
+                      file=fpXMF)
         GCell = fout.create_group("cell_coords")
         GNode = fout.create_group("node_coords")
         for i in self.Direction:
             GCell.create_dataset(i, data=np.transpose(self.Cells[i]))
+            # print(self.Attribute.format(i, "Cell", *self.Cells[i].shape, filename, 'cell_coords'),
+            #       file=fpXMF)
             GNode.create_dataset(i, data=np.transpose(self.Nodes[i]))
         fout.close()
+        print(self.XMFFooter, file=fpXMF)
+        fpXMF.close()
+        print("Data is written to {0},\n use the companion file ({1}) for loading the data into Paraview or Visit".
+              format(BaseAddress+filename, BaseAddress+filename+".xmf"))
+        return
 
     def ToNewMesh(self, idata2, VarName, NewLocation):
         """
@@ -842,6 +854,9 @@ class DataSet:
                         Geo["vars"][t]["Location"] = "EdgeY"
                     elif tLocation == EdgeZ:
                         Geo["vars"][t]["Location"] = "EdgeZ"
+                    else:
+                        print("Can not find the location for : ", t)
+                        del Geo["vars"][t]
 
         Geo["Files"] = FilesNames[(StartingBlock * BlockSize):(StartingBlock * BlockSize + BlockSize)]
         return Geo
@@ -911,8 +926,7 @@ class DataSet:
         # Allocating the memory for parameters stored in input file/s
         for v in self.geo["vars"].keys():
             self.Scalar(v, self.geo["vars"][v]["Location"], self.Adummy, InialVal=-1.0e10)
-            # self.Write2HDF5('/home/farhadda/OhOh2.h5')
-            # print(v, ' must be ', self.vars[v]['val'].shape)
+
         for f in self.geo["Files"]:
             data = np.load(self.BaseAddress + f, allow_pickle=True, encoding="bytes")
             # Check number of points in input arrays, remove Ghost-Cells and use as ending index in each axis
@@ -945,6 +959,81 @@ class DataSet:
                     data[v][BegX:(EndX + ExtraX), BegY:(EndY + ExtraY), BegZ:(EndZ + ExtraZ)]
         return
 
+    def LoadVTR(self, Pattern: str, BaseAddress: str="", Variables: list=None, Scale: float=1.0):
+        """
+
+        :param Pattern:
+        :type Pattern:
+        :param BaseAddress:
+        :type BaseAddress:
+        :param Variables:
+        :type Variables:
+        :return:
+        :rtype:
+        """
+        FilesNames = fnmatch.filter(os.listdir(BaseAddress), Pattern)
+        FilesNames.sort()
+        NumFiles = len(FilesNames)
+        OnNode = []
+        OnCell = []
+
+        reader = vtk.vtkXMLRectilinearGridReader()
+        reader.SetFileName(BaseAddress+FilesNames[0])
+        reader.Update()
+        data = reader.GetOutput()
+        for i in range(data.GetPointData().GetNumberOfArrays()):
+            var = data.GetPointData().GetArrayName(i)
+            if (Variables is None) or (var in Variables):
+                OnNode.append(var)
+
+        for i in range(data.GetCellData().GetNumberOfArrays()):
+            var = data.GetCellData().GetArrayName(i)
+            if (Variables is None) or (var in Variables):
+                OnCell.append(var)
+
+        # Allocating the memory for parameters stored in input file/s
+        print("Following parameters are found in the given VTR file/s :: ")
+        for var in OnNode:
+            print(" {0} (defined on Nodes)".format(var))
+            self.Scalar(var, "Nodes", self.Adummy, InialVal=-1.0e10)
+        for var in OnCell:
+            print(" {0} (defined on Cells)".format(var))
+            self.Scalar(var, "Cells", self.Adummy, InialVal=-1.0e10)
+
+        for f in FilesNames:
+            # First find Data and the their location in vtr files
+            reader = vtk.vtkXMLRectilinearGridReader()
+            reader.SetFileName(BaseAddress+f)
+            reader.Update()
+            data = reader.GetOutput()
+            x = np.array(data.GetXCoordinates()) * Scale
+            y = np.array(data.GetYCoordinates()) * Scale
+            z = np.array(data.GetZCoordinates()) * Scale
+            nx = x.size
+            ny = y.size
+            nz = z.size
+
+            SPX = np.searchsorted(self.nodevect[self.Direction[0]], x[0])
+            EPX = np.searchsorted(self.nodevect[self.Direction[0]], x[-1], side='right')
+
+            SPY = np.searchsorted(self.nodevect[self.Direction[1]], y[0])
+            EPY = np.searchsorted(self.nodevect[self.Direction[1]], y[-1], side='right')
+
+            SPZ = np.searchsorted(self.nodevect[self.Direction[2]], z[0])
+            EPZ = np.searchsorted(self.nodevect[self.Direction[2]], z[-1], side='right') #
+
+            for v in OnNode:
+                # print("Loading {0} in Nodes... ".format(v))
+                self.vars[v]["val"][SPX:EPX, SPY:EPY, SPZ:EPZ] = \
+                    np.array(data.GetPointData().GetArray(v)).reshape((nx, ny, nz), order='F')
+
+            for v in OnCell:
+                # print("Loading {0} in Cells... ".format(v))
+                self.vars[v]["val"][SPX:(EPX-1), SPY:(EPY-1), SPZ:(EPZ-1)] = \
+                    np.array(data.GetCellData().GetArray(v)).reshape((nx-1, ny-1, nz-1), order='F')
+
+        return
+
     def ToPluto(self, Vars: list=[], Address: str = "./", BaseName: str = ""):
         if len(Vars) == 0:
             Vars = list(self.vars.keys())
@@ -971,18 +1060,31 @@ class DataSet:
                 self.vars[v]["val"].T.tofile(OutFile)
                 print(v, " is stored in ", OutFile, end='\n', file=flog)
             elif self.vars[v]["Location"] == "FaceX":
-                OutFile = Address + BaseName + v + '.dbl'
+                OutFile = Address + BaseName + v + '_FaceX.dbl'
+                self.vars[v]["val"].T.tofile(OutFile)
+                print(v, " (on FaceX) is stored in ", OutFile, end='\n', file=flog)
+
+                OutFile = Address + BaseName + v + '_Avg.dbl'
                 (0.5 * (self.vars[v]["val"][:-1, :, :] + self.vars[v]["val"][1:, :, :])).T.tofile(OutFile)
                 print(v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
             elif self.vars[v]["Location"] == "FaceY":
-                OutFile = Address + BaseName + v + '.dbl'
+                OutFile = Address + BaseName + v + '_FaceY.dbl'
+                self.vars[v]["val"].T.tofile(OutFile)
+                print(v, " (on FaceY) is stored in ", OutFile, end='\n', file=flog)
+
+                OutFile = Address + BaseName + v + '_Avg.dbl'
                 (0.5 * (self.vars[v]["val"][:, :-1, :] + self.vars[v]["val"][:, 1:, :])).T.tofile(OutFile)
                 print(v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
             elif self.vars[v]["Location"] == "FaceZ":
-                OutFile = Address + BaseName + v + '.dbl'
+                OutFile = Address + BaseName + v + '_FaceZ.dbl'
+                self.vars[v]["val"].T.tofile(OutFile)
+                print(v, " (on FaceZ) is stored in ", OutFile, end='\n', file=flog)
+
+                OutFile = Address + BaseName + v + '_Avg.dbl'
                 (0.5 * (self.vars[v]["val"][:, :, :-1] + self.vars[v]["val"][:, :, 1:])).T.tofile(OutFile)
                 print(v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
             else:
                 print("Can not store ", v, ", Location is not supported for now", end='\n', file=flog)
+
         flog.close()
         return
