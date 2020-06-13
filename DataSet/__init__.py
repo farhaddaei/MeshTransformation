@@ -16,7 +16,6 @@ import fnmatch
 import h5py as h5
 import numpy as np
 import vtk
-# from pandas.core.internals.blocks import NumericBlock
 from scipy.interpolate import RegularGridInterpolator
 # from memory_profiler import profile
 
