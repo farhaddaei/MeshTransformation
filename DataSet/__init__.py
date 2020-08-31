@@ -17,21 +17,20 @@ import h5py as h5
 import numpy as np
 import vtk
 from scipy.interpolate import RegularGridInterpolator
-# from memory_profiler import profile
+from memory_profiler import profile
 
 
 class DataSet:
     """
     DataSet
     """
-#     @profile
-    def __init__(self, SystemOfCoords, NCell=None, startval=None, endval=None,
-                 BaseAddress=None, Pattern=None, NBlocks=None, UseBlock=None):
+    def __init__(self, SystemOfCoords, NCell:tuple(int, int, int)= None, startval=None, endval=None,
+                 BaseAddress=None, Pattern=None, NBlocks:int = None, UseBlock:int = None):
         """
         A Class to create uniform mesh in 1, 2, or 3 dimensions
         in Cartesian or system of coordinates.
 
-        inputs ::
+        inputs :
         ---------
         :param NCell: number of cells in each dimension
         :type NCell: Iterable, positive int
@@ -193,7 +192,7 @@ class DataSet:
  </Attribute>"""
         return
 
-    def Scalar(self, VarName, Location, function, InialVal=None):
+    def Scalar(self, VarName, Location, function, InitialVal=None):
         """
         inputs ::
         ---------
@@ -222,8 +221,8 @@ class DataSet:
             self.vars[VarName] = dict()
             self.vars[VarName]['Location'] = Location
             self.vars[VarName]["val"] = function(self.__dict__[Location])
-            if InialVal is not None:
-                self.vars[VarName]["val"][:, :, :] = InialVal
+            if InitialVal is not None:
+                self.vars[VarName]["val"][:, :, :] = InitialVal
         else:
             print(Location, " is not supported.")
             print("Possible locations for scalar variables are :: ", *self.LocationOnGrid)
@@ -658,15 +657,16 @@ class DataSet:
 
         return
 
-    def Write2HDF5(self, filename, BaseAddress: str='./'):
+    def Write2HDF5(self, filename, BaseAddress: str='./') -> None:
         """
-        inputs ::
-        ---------
-        :param filename:
-        :type filename:
+        Parameters
+        ----------
+        filename : str
+            Name of the file to save with ``.h5`` extension
 
-        :param databasename:
-        :type databasename:
+        BaseAddress : str
+            Relative or absolute path in which file must be saved in,
+            default value is current directory
         """
 
         fout = h5.File(BaseAddress+filename, 'w')
@@ -750,7 +750,6 @@ class DataSet:
         idata2.vars[VarName]["val"] = InterpolateFunc(Points2).reshape(OutputShape)
         return
 
-#     @profile
     def FindGeometry(self, BlockSize, BaseAddress, Pattern, StartingBlock):
         """
         FindGeometry finds out the mesh structure, the data
@@ -924,7 +923,7 @@ class DataSet:
 
         # Allocating the memory for parameters stored in input file/s
         for v in self.geo["vars"].keys():
-            self.Scalar(v, self.geo["vars"][v]["Location"], self.Adummy, InialVal=-1.0e10)
+            self.Scalar(v, self.geo["vars"][v]["Location"], self.Adummy, InitialVal=-1.0e10)
 
         for f in self.geo["Files"]:
             data = np.load(self.BaseAddress + f, allow_pickle=True, encoding="bytes")
@@ -994,10 +993,10 @@ class DataSet:
         print("Following parameters are found in the given VTR file/s :: ")
         for var in OnNode:
             print(" {0} (defined on Nodes)".format(var))
-            self.Scalar(var, "Nodes", self.Adummy, InialVal=-1.0e10)
+            self.Scalar(var, "Nodes", self.Adummy, InitialVal=-1.0e10)
         for var in OnCell:
             print(" {0} (defined on Cells)".format(var))
-            self.Scalar(var, "Cells", self.Adummy, InialVal=-1.0e10)
+            self.Scalar(var, "Cells", self.Adummy, InitialVal=-1.0e10)
 
         for f in FilesNames:
             # First find Data and the their location in vtr files
@@ -1034,17 +1033,29 @@ class DataSet:
         return
 
     def ToPluto(self, Vars: list=[], Address: str = "./", BaseName: str = ""):
+        """
+
+        Parameters
+        ----------
+        Vars :
+        Address :
+        BaseName :
+
+        Returns
+        -------
+
+        """
         if len(Vars) == 0:
             Vars = list(self.vars.keys())
         flog = open(Address+BaseName+"to_pluto.log", "wt")
         fgrid = open(Address+BaseName+"GRID.dat", "wt")
         print("Grid file :\n {0}".format(Address+BaseName+"GRID.dat"), file=flog)
-        print("Nomber of Cells : ", self.NCell, file=flog)
+        print("Number of Cells : ", self.NCell, file=flog)
 
         print("# GEOMETRY:   CARTESIAN", end='\n', file=fgrid)
         for d in self.Direction:
             nCells = self.nodevect[d].size-1
-            print("{0} : {1:12.6e}   {2:12.6e}".format(d,self.nodevect[d][0], self.nodevect[d][-1]),
+            print("{0} : {1:12.6e}   {2:12.6e}".format(d, self.nodevect[d][0], self.nodevect[d][-1]),
                   file=flog)
             print("{0}".format(nCells), end='\n', file=fgrid)
             for p in range(nCells):
@@ -1057,33 +1068,45 @@ class DataSet:
             if self.vars[v]["Location"] == "Cells":
                 OutFile = Address + BaseName + v + '.dbl'
                 self.vars[v]["val"].T.tofile(OutFile)
-                print(v, " is stored in ", OutFile, end='\n', file=flog)
+                print('\n', v, " is stored in ", OutFile, end='\n', file=flog)
             elif self.vars[v]["Location"] == "FaceX":
                 OutFile = Address + BaseName + v + '_FaceX.dbl'
                 self.vars[v]["val"].T.tofile(OutFile)
-                print(v, " (on FaceX) is stored in ", OutFile, end='\n', file=flog)
+                print('\n', v, " (on FaceX) is stored in ", OutFile, end='\n', file=flog)
 
                 OutFile = Address + BaseName + v + '_Avg.dbl'
                 (0.5 * (self.vars[v]["val"][:-1, :, :] + self.vars[v]["val"][1:, :, :])).T.tofile(OutFile)
-                print(v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
+                print('\n', v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
             elif self.vars[v]["Location"] == "FaceY":
                 OutFile = Address + BaseName + v + '_FaceY.dbl'
                 self.vars[v]["val"].T.tofile(OutFile)
-                print(v, " (on FaceY) is stored in ", OutFile, end='\n', file=flog)
+                print('\n', v, " (on FaceY) is stored in ", OutFile, end='\n', file=flog)
 
                 OutFile = Address + BaseName + v + '_Avg.dbl'
                 (0.5 * (self.vars[v]["val"][:, :-1, :] + self.vars[v]["val"][:, 1:, :])).T.tofile(OutFile)
-                print(v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
+                print('\n', v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
             elif self.vars[v]["Location"] == "FaceZ":
                 OutFile = Address + BaseName + v + '_FaceZ.dbl'
                 self.vars[v]["val"].T.tofile(OutFile)
-                print(v, " (on FaceZ) is stored in ", OutFile, end='\n', file=flog)
+                print('\n', v, " (on FaceZ) is stored in ", OutFile, end='\n', file=flog)
 
                 OutFile = Address + BaseName + v + '_Avg.dbl'
                 (0.5 * (self.vars[v]["val"][:, :, :-1] + self.vars[v]["val"][:, :, 1:])).T.tofile(OutFile)
-                print(v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
+                print('\n', v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
+            elif self.vars[v]["Location"] == "Nodes":
+                OutFile = Address + BaseName + v + '_Nodes.dbl'
+                self.vars[v]["val"].T.tofile(OutFile)
+                print('\n', v, " (on Nodes) is stored in ", OutFile, end='\n', file=flog)
+
+                OutFile = Address + BaseName + v + '_Nodes_Avg.dbl'
+                (0.125 * (self.vars[v]["val"][:-1, :-1, :-1] + self.vars[v]["val"][:-1, :-1, 1:] +
+                          self.vars[v]["val"][:-1, 1:, :-1] + self.vars[v]["val"][1:, :-1, :-1] +
+                          self.vars[v]["val"][1:, 1:, :-1] + self.vars[v]["val"][1:, :-1, 1:] +
+                          self.vars[v]["val"][:-1, 1:, 1:] + self.vars[v]["val"][1:, 1:, 1:])
+                 ).T.tofile(OutFile)
+                print('\n', v, " (Averaged to Cell) is stored in ", OutFile, end='\n', file=flog)
             else:
-                print("Can not store ", v, ", Location is not supported for now", end='\n', file=flog)
+                print('\n', "Can not store ", v, ", Location is not supported for now", end='\n', file=flog)
 
         flog.close()
         return
