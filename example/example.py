@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-class ModelParameters(object): pass
-
 from DataSet import DataSet as DS
 import astropy.constants as Const
 import numpy as np
 
-BaseAddress = "/home/farhadda/div_E_Omega_2011-06-06T09-36-00/Daniel/"
+class ModelParameters(object): pass
+
+
+BaseAddress = "/home/sigma/PycharmProjects/"
 ds1 = DS(SystemOfCoords="CAR", BaseAddress=BaseAddress,
          Pattern="div_E_omega_2017-09-06T09-24-00.npz",
          NBlocks=1, UseBlock=0)
@@ -13,7 +14,7 @@ ds1 = DS(SystemOfCoords="CAR", BaseAddress=BaseAddress,
 ds1.LoadVTR(Pattern="div_E_omega_2017-09-06T09-24-00.vtr",
             BaseAddress=BaseAddress, Scale=1.e6)
 
-## Calculation for   Mean Molecular Weight(Mu)
+# # Calculating Mean Molecular Weight(Mu)
 H_MASS_FRAC = 0.7110  # Fraction of mass by Hydrogen
 He_MASS_FRAC = 0.2741  # Fraction of mass by Helium
 CONST_AH = 1.008  # Atomic weight of Hydrogen
@@ -44,5 +45,5 @@ ds1.vars['P']['val'][:, :, :] = ds1.vars['rho']['val'] * params.T0 * Const.k_B.s
 
 for c in ds1.Direction:
     ds1.nodevect[c] *= 1.e-8
-ds1.ToPluto(Address="/home/local/farhadda/PLUTO/Try/")
-ds1.Write2HDF5("div_E_omega_2017-09-06T09-24-00.h5", BaseAddress="/home/local/farhadda/PLUTO/Try/")
+ds1.ToPluto(Address="/home/sigma/PLUTO/PLUTOTest/")
+ds1.Write2HDF5("div_E_omega_2017-09-06T09-24-00.h5", BaseAddress="/home/sigma/PLUTO/PLUTOTest/")

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
+
 """
     This is a simple code just to check
     the correctness of magnetic field
@@ -24,7 +25,8 @@ class DataSet:
     """
     DataSet
     """
-    def __init__(self, SystemOfCoords, NCell:tuple(int, int, int)= None, startval=None, endval=None,
+    def __init__(self, SystemOfCoords, NCell:[tuple]= None, startval=None, endval=None,
+                 Functions=('linear', 'linear', 'linear'),
                  BaseAddress=None, Pattern=None, NBlocks:int = None, UseBlock:int = None):
         """
         A Class to create uniform mesh in 1, 2, or 3 dimensions
@@ -76,8 +78,17 @@ class DataSet:
             self.startval = startval
             self.endval = endval
             for i in range(self.NAxes):
-                self.nodevect[Direction[i]] = \
-                    np.linspace(start=self.startval[i], stop=self.endval[i], num=(self.NCell[i] + 1))
+                if Functions[i] == 'linear':
+                    self.nodevect[Direction[i]] = \
+                        np.linspace(start=self.startval[i], stop=self.endval[i], num=(self.NCell[i] + 1))
+                else:
+                    # TODO :: Call Non-Uniform Mesh Function
+                    print("Calling non-uniform mesh on {} direction".format(Direction[i]))
+                    self.NCell[i], self.nodevect[Direction[i]] = \
+                    self.NonUniformMesh(Functions=Functions[i],
+                                        StartVals=startval[i],
+                                        EndVals=endval[i],
+                                        NumInterval=self.NCell[i])
         elif NCell is None and startval is None and endval is None:
             self.LoadFromFile = True
             if Pattern is None:
@@ -192,6 +203,38 @@ class DataSet:
  </Attribute>"""
         return
 
+    def NonUniformMesh(self, Functions, StartVals, EndVals, NumInterval):
+        """
+
+        :param Functions:
+        :param StartVals:
+        :param EndVals:
+        :param NumInterval:
+        :return:
+        """
+        if (len(Functions) != len(NumInterval)) or \
+            len(NumInterval) != len(StartVals) or \
+            len(StartVals) != len(EndVals):
+            sys.exit("Number of some shits must be equal")
+
+        totalcells = sum(NumInterval)
+        result = np.empty([totalcells+1], dtype=np.float64)
+        # DEBUG
+        print("  Total Number of Cells {0}".format(totalcells))
+        firstpoint = 0
+        for f in range(len(Functions)):
+            if Functions[f] == 'linear':
+                temp = np.linspace(StartVals[f], EndVals[f],
+                                     num=(NumInterval[f] + 1), endpoint=True)
+            else:
+                temp = Functions[f](StartVals[f], EndVals[f], NumInterval[f])
+            # DEBUG
+            print("  Start {0} End {1} size {2}".format(firstpoint, firstpoint+NumInterval[f], temp.size))
+            result[firstpoint:(firstpoint + NumInterval[f] + 1)] = temp[:]
+            firstpoint += NumInterval[f]
+
+        return totalcells, result
+
     def Scalar(self, VarName, Location, function, InitialVal=None):
         """
         inputs ::
@@ -227,7 +270,7 @@ class DataSet:
             print(Location, " is not supported.")
             print("Possible locations for scalar variables are :: ", *self.LocationOnGrid)
 
-    # Defining Divergance Operators
+    # Defining Divergence Operators
     def DivCell(self, VarNameX, VarNameY, VarNameZ, NewVarName):
         """
         :param VarNameX:
@@ -243,7 +286,7 @@ class DataSet:
         """
         if any(loc["Location"] != "Cells" for loc in
                (self.vars[VarNameX], self.vars[VarNameY], self.vars[VarNameZ])):
-            print("Input parameters must be repesented on cell center!!")
+            print("Input parameters must be represented on cell center!!")
             return
 
         VarX = self.vars[VarNameX]["val"]
@@ -713,10 +756,10 @@ class DataSet:
         inputs ::
         ---------
 
-        :param idata2: destenation dataset
+        :param idata2: destination dataset
         :type idata2: dataset
 
-        :param NewLocation: location of transfered variable
+        :param NewLocation: location of transferred variable
         :type NewLocation: str
 
         :param VarName:
@@ -746,7 +789,14 @@ class DataSet:
         points2Y = idata2.__dict__[NewLocation]['Y'][0, :, 0]
         points2Z = idata2.__dict__[NewLocation]['Z'][0, 0, :]
         OutputShape = idata2.__dict__[NewLocation]['X'].shape
+
+        print(idata2.__dict__[NewLocation]['X'].shape,
+              self.__dict__[Loc1]['X'].shape,
+              NewLocation)
+
+        print("Last - 1")
         Points2 = np.vstack(np.meshgrid(points2X, points2Y, points2Z, indexing="ij")).reshape(3, -1).T
+        print("Last")
         idata2.vars[VarName]["val"] = InterpolateFunc(Points2).reshape(OutputShape)
         return
 
